@@ -8,6 +8,8 @@ import { getProjectById } from '../services/projectService';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectStages } from '../components/ProjectStages';
 import { ProjectActions } from '../components/ProjectActions';
+import { PhotoGallery } from '../components/PhotoGallery';
+import { EditPhotoGallery } from '../components/EditPhotoGallery';
 import { ArrowLeft, Calendar, DollarSign, User, MapPin, Briefcase } from 'lucide-react';
 
 const ProjectDetails = () => {
@@ -81,7 +83,6 @@ const ProjectDetails = () => {
 
       <main className="flex-1 overflow-auto bg-black p-6">
         <div className="max-w-6xl mx-auto space-y-8">
-          {/* Project Header */}
           <div className="bg-gray-900 rounded-lg shadow-md p-6 border border-[#96D7FE]/20">
             <div className="flex items-start justify-between mb-6">
               <div>
@@ -100,12 +101,17 @@ const ProjectDetails = () => {
                   {project.status}
                 </span>
                 {isManagerAuthenticated && (
-                  <ProjectActions project={project} />
+                  <div className="flex gap-2 flex-wrap justify-end">
+                    <ProjectActions project={project} />
+                    <EditPhotoGallery 
+                      projectId={project.id} 
+                      currentUrl={project.photoGalleryUrl} 
+                    />
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Project Info Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card className="bg-gray-800 border-[#96D7FE]/20">
                 <CardHeader className="pb-3">
@@ -139,7 +145,7 @@ const ProjectDetails = () => {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
                     <DollarSign size={16} />
-                    Job Value
+                    Budget
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -165,13 +171,13 @@ const ProjectDetails = () => {
             </div>
           </div>
 
-          {/* Project Stages */}
           <ProjectStages 
             project={project} 
             isManager={isManagerAuthenticated} 
           />
 
-          {/* Project Scope */}
+          <PhotoGallery photoGalleryUrl={project.photoGalleryUrl} />
+
           <Card className="bg-gray-900 border-[#96D7FE]/30">
             <CardHeader>
               <CardTitle className="text-white">Project Scope</CardTitle>
@@ -188,7 +194,6 @@ const ProjectDetails = () => {
             </CardContent>
           </Card>
 
-          {/* Project Updates */}
           {project.updates.length > 0 && (
             <Card className="bg-gray-900 border-[#96D7FE]/30">
               <CardHeader>
@@ -228,7 +233,6 @@ const ProjectDetails = () => {
             </Card>
           )}
 
-          {/* Project Photos */}
           {project.photos.length > 0 && (
             <Card className="bg-gray-900 border-[#96D7FE]/30">
               <CardHeader>

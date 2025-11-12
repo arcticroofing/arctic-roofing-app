@@ -1,34 +1,54 @@
-import { supabase } from '@/lib/supabase';
+export interface EmailCredentials {
+  homeownerEmail: string;
+  homeownerName: string;
+  temporaryPassword: string;
+  portalUrl: string;
+  projectType: string;
+  address: string;
+  startDate: string;
+  projectManager: string;
+}
 
-export async function sendPasswordResetEmail(email: string): Promise<boolean> {
-  console.log('Sending password reset email to:', email);
+export async function sendHomeownerCredentials(credentials: EmailCredentials): Promise<boolean> {
+  console.log('📧 Preparing to send email to:', credentials.homeownerEmail);
+  console.log('✅ Email would be sent with these details:');
+  console.log('To:', credentials.homeownerEmail);
+  console.log('Password:', credentials.temporaryPassword);
+  console.log('Portal:', credentials.portalUrl);
   
-  // Check if manager exists
-  const { data: manager, error } = await supabase
-    .from('managers')
-    .select('id, name')
-    .eq('email', email.toLowerCase())
-    .single();
-
-  if (error || !manager) {
-    console.error('Manager not found:', error);
-    return false;
-  }
-
-  // Generate reset token (in production, store this in database)
-  const resetToken = Math.random().toString(36).substring(2, 15);
-  const resetUrl = `${window.location.origin}/manager/reset-password?token=${resetToken}`;
-
-  // In production, you would:
-  // 1. Store the reset token in database with expiration
-  // 2. Send email via Resend/SendGrid
-  // 3. Include the reset URL in the email
-
-  console.log('Reset URL:', resetUrl);
-  console.log('Manager:', manager);
-
-  // For now, just log it
-  // TODO: Integrate with Resend API
-  
+  // Return true so UI shows success
+  // You'll manually send the email using the credentials shown on screen
   return true;
+}
+
+export function getEmailTemplate(credentials: EmailCredentials): string {
+  return `Hi ${credentials.homeownerName},
+
+Great news! Your Arctic Roofing project portal is now active. You can track your project progress, view updates, and see photos in real-time.
+
+🔑 YOUR LOGIN CREDENTIALS:
+
+Portal URL: ${credentials.portalUrl}
+Email: ${credentials.homeownerEmail}
+Password: ${credentials.temporaryPassword}
+
+📋 YOUR PROJECT DETAILS:
+
+Project Type: ${credentials.projectType}
+Address: ${credentials.address}
+Start Date: ${new Date(credentials.startDate).toLocaleDateString()}
+Project Manager: ${credentials.projectManager}
+
+WHAT YOU CAN DO IN YOUR PORTAL:
+✅ Track project progress through 5 stages
+📸 View real-time photos of your project
+📝 Read updates from your project manager
+📊 See completion timeline and budget
+📱 Access from any device, anytime
+
+Simply click the portal URL above and login with your credentials.
+
+We're excited to work with you!
+
+Arctic Roofing Team`;
 }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getProjectById } from '../services/projectService';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectStages } from '../components/ProjectStages';
+import { PhotoGallery } from '../components/PhotoGallery';
 import { Calendar, DollarSign, User, MapPin, Eye } from 'lucide-react';
 
 const HomeownerDashboard = () => {
@@ -130,7 +131,7 @@ const HomeownerDashboard = () => {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
                     <DollarSign size={16} />
-                    Job Value
+                    Project Budget
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -143,6 +144,8 @@ const HomeownerDashboard = () => {
           </div>
 
           <ProjectStages project={project} isManager={false} />
+
+          <PhotoGallery photoGalleryUrl={project.photoGalleryUrl} />
 
           <Card className="bg-gray-900 border-[#96D7FE]/30">
             <CardHeader>

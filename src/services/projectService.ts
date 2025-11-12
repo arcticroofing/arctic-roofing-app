@@ -33,6 +33,7 @@ export interface Project {
   photos: string[];
   scope: string[];
   stages: ProjectStage[];
+  photoGalleryUrl?: string;
 }
 
 function getDefaultStages(): ProjectStage[] {
@@ -105,6 +106,7 @@ export const getProjects = async (): Promise<Project[]> => {
     scope: project.scope || [],
     photos: project.photos || [],
     stages: project.stages || getDefaultStages(),
+    photoGalleryUrl: project.photo_gallery_url,
     updates: []
   }));
 };
@@ -144,6 +146,7 @@ export const getProjectById = async (id: string): Promise<Project | undefined> =
     scope: project.scope || [],
     photos: project.photos || [],
     stages: project.stages || getDefaultStages(),
+    photoGalleryUrl: project.photo_gallery_url,
     updates: (updates || []).map(u => ({
       id: u.id,
       date: u.date,
@@ -173,7 +176,8 @@ export const createProject = async (projectData: any): Promise<Project> => {
       scope: projectData.scope,
       progress: 0,
       photos: [],
-      stages: getDefaultStages()
+      stages: getDefaultStages(),
+      photo_gallery_url: projectData.photoGalleryUrl
     }])
     .select()
     .single();
@@ -198,6 +202,7 @@ export const createProject = async (projectData: any): Promise<Project> => {
     scope: data.scope || [],
     photos: data.photos || [],
     stages: data.stages || getDefaultStages(),
+    photoGalleryUrl: data.photo_gallery_url,
     updates: []
   };
 };
@@ -274,6 +279,25 @@ export const updateProjectStages = async (
 
   if (error) {
     console.error('Error updating stages:', error);
+    return undefined;
+  }
+
+  return getProjectById(projectId);
+};
+
+export const updatePhotoGalleryUrl = async (
+  projectId: string,
+  photoGalleryUrl: string
+): Promise<Project | undefined> => {
+  console.log('Updating photo gallery URL:', projectId);
+  
+  const { error } = await supabase
+    .from('projects')
+    .update({ photo_gallery_url: photoGalleryUrl })
+    .eq('id', projectId);
+
+  if (error) {
+    console.error('Error updating photo gallery URL:', error);
     return undefined;
   }
 
