@@ -1,0 +1,52 @@
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Routes, Route, BrowserRouter } from "react-router-dom";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AuthProvider } from "./contexts/AuthContext";
+import { AppSidebar } from "./components/AppSidebar";
+import Index from "@/pages/Index";
+import HomeownerLogin from "@/pages/HomeownerLogin";
+import HomeownerDashboard from "@/pages/HomeownerDashboard";
+import ManagerLogin from "@/pages/ManagerLogin";
+import ProjectManagerDashboard from "@/pages/ProjectManagerDashboard";
+import CreateProject from "@/pages/CreateProject";
+import ProjectDetails from "@/pages/ProjectDetails";
+import NotFound from "@/pages/NotFound";
+
+const queryClient = new QueryClient();
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <BrowserRouter>
+            <Toaster />
+            <Sonner />
+            <SidebarProvider>
+              <div className="flex min-h-screen w-full">
+                <AppSidebar />
+                <SidebarInset className="flex-1 w-full min-w-0">
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/homeowner/login" element={<HomeownerLogin />} />
+                    <Route path="/homeowner" element={<HomeownerDashboard />} />
+                    <Route path="/manager/login" element={<ManagerLogin />} />
+                    <Route path="/manager" element={<ProjectManagerDashboard />} />
+                    <Route path="/manager/create-project" element={<CreateProject />} />
+                    <Route path="/project/:id" element={<ProjectDetails />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </SidebarInset>
+              </div>
+            </SidebarProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
