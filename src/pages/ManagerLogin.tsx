@@ -118,9 +118,6 @@ const ManagerLogin = () => {
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
-
-    
-            </div>
           </CardContent>
         </Card>
       </main>

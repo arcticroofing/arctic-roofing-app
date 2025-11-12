@@ -118,14 +118,6 @@ const HomeownerLogin = () => {
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
-
-            <div className="mt-6 p-4 bg-[#96D7FE]/5 rounded-lg border border-[#96D7FE]/20">
-              <p className="text-sm font-semibold text-[#96D7FE] mb-2">Demo Credentials:</p>
-              <div className="text-xs text-gray-400 space-y-1">
-                <p><strong className="text-gray-300">Mitchell Family:</strong> mitchell@email.com / demo123</p>
-                <p><strong className="text-gray-300">Chen Family:</strong> chen@email.com / demo123</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </main>
