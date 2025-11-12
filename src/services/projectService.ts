@@ -11,15 +11,15 @@ export interface ProjectUpdate {
 
 export interface Project {
   id: string;
-  homeowner_name: string;
-  homeowner_email: string;
+  homeownerName: string;
+  homeownerEmail: string;
   address: string;
-  project_type: string;
+  projectType: string;
   status: 'Not Started' | 'In Progress' | 'Completed' | 'On Hold';
   progress: number;
-  start_date: string;
-  estimated_completion: string;
-  project_manager: string;
+  startDate: string;
+  estimatedCompletion: string;
+  projectManager: string;
   budget: number;
   updates: ProjectUpdate[];
   photos: string[];
@@ -41,8 +41,8 @@ export const getProjects = async (): Promise<Project[]> => {
 
   console.log('Projects fetched:', data);
   
-  // Transform database format to app format
-  return data.map(project => ({
+  // Transform database snake_case to camelCase
+  return (data || []).map(project => ({
     id: project.id,
     homeownerName: project.homeowner_name,
     homeownerEmail: project.homeowner_email,
@@ -56,7 +56,7 @@ export const getProjects = async (): Promise<Project[]> => {
     budget: project.budget,
     scope: project.scope || [],
     photos: project.photos || [],
-    updates: [] // We'll fetch these separately
+    updates: []
   }));
 };
 
@@ -95,7 +95,14 @@ export const getProjectById = async (id: string): Promise<Project | undefined> =
     budget: project.budget,
     scope: project.scope || [],
     photos: project.photos || [],
-    updates: updates || []
+    updates: (updates || []).map(u => ({
+      id: u.id,
+      date: u.date,
+      title: u.title,
+      description: u.description,
+      author: u.author,
+      photos: u.photos || []
+    }))
   };
 };
 
