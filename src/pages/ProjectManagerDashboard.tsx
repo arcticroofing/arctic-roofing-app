@@ -253,7 +253,7 @@ const ProjectManagerDashboard = () => {
                     </p>
                   </div>
                   <div>
-                    <span className="text-gray-400">Budget</span>
+                    <span className="text-gray-400">Job Value</span>
                     <p className="font-semibold text-white">
                       ${project.budget.toLocaleString()}
                     </p>

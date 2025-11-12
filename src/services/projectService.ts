@@ -1,5 +1,13 @@
 import { supabase } from '@/lib/supabase';
 
+export interface ProjectStage {
+  id: number;
+  name: string;
+  description: string;
+  completed: boolean;
+  completedDate: string | null;
+}
+
 export interface ProjectUpdate {
   id: string;
   date: string;
@@ -24,6 +32,47 @@ export interface Project {
   updates: ProjectUpdate[];
   photos: string[];
   scope: string[];
+  stages: ProjectStage[];
+}
+
+function getDefaultStages(): ProjectStage[] {
+  return [
+    {
+      id: 1,
+      name: "Arrival & Setup",
+      description: "Crew arrives and introduces themselves, Property protection set up (tarps, driveway, plants, AC units), Materials and tools organized",
+      completed: false,
+      completedDate: null
+    },
+    {
+      id: 2,
+      name: "Roof Removal",
+      description: "Old shingles and materials removed, Roof deck inspected for damage, Any bad wood replaced if needed",
+      completed: false,
+      completedDate: null
+    },
+    {
+      id: 3,
+      name: "Installation",
+      description: "Ice & water shield and underlayment installed, Drip edge, flashing, and vents placed, New shingles installed according to manufacturer specs",
+      completed: false,
+      completedDate: null
+    },
+    {
+      id: 4,
+      name: "Cleanup & Final Check",
+      description: "Ground magnets used to remove nails, All debris and tarps cleaned up, Final roof inspection completed",
+      completed: false,
+      completedDate: null
+    },
+    {
+      id: 5,
+      name: "Completion",
+      description: "Photos uploaded to your portal, Homeowner walkthrough (if available), Warranty and final documents sent",
+      completed: false,
+      completedDate: null
+    }
+  ];
 }
 
 export const getProjects = async (): Promise<Project[]> => {
@@ -41,7 +90,6 @@ export const getProjects = async (): Promise<Project[]> => {
 
   console.log('Projects fetched:', data);
   
-  // Transform database snake_case to camelCase
   return (data || []).map(project => ({
     id: project.id,
     homeownerName: project.homeowner_name,
@@ -56,6 +104,7 @@ export const getProjects = async (): Promise<Project[]> => {
     budget: project.budget,
     scope: project.scope || [],
     photos: project.photos || [],
+    stages: project.stages || getDefaultStages(),
     updates: []
   }));
 };
@@ -74,7 +123,6 @@ export const getProjectById = async (id: string): Promise<Project | undefined> =
     return undefined;
   }
 
-  // Fetch updates for this project
   const { data: updates, error: updatesError } = await supabase
     .from('project_updates')
     .select('*')
@@ -95,6 +143,7 @@ export const getProjectById = async (id: string): Promise<Project | undefined> =
     budget: project.budget,
     scope: project.scope || [],
     photos: project.photos || [],
+    stages: project.stages || getDefaultStages(),
     updates: (updates || []).map(u => ({
       id: u.id,
       date: u.date,
@@ -123,7 +172,8 @@ export const createProject = async (projectData: any): Promise<Project> => {
       budget: projectData.budget,
       scope: projectData.scope,
       progress: 0,
-      photos: []
+      photos: [],
+      stages: getDefaultStages()
     }])
     .select()
     .single();
@@ -147,6 +197,7 @@ export const createProject = async (projectData: any): Promise<Project> => {
     budget: data.budget,
     scope: data.scope || [],
     photos: data.photos || [],
+    stages: data.stages || getDefaultStages(),
     updates: []
   };
 };
@@ -173,7 +224,6 @@ export const addProjectUpdate = async (
     return undefined;
   }
 
-  // Return updated project
   return getProjectById(projectId);
 };
 
@@ -193,4 +243,53 @@ export const updateProjectStatus = async (
   }
 
   return getProjectById(id);
+};
+
+export const updateProjectStages = async (
+  projectId: string,
+  stages: ProjectStage[]
+): Promise<Project | undefined> => {
+  console.log('Updating project stages:', projectId);
+  
+  // Calculate progress based on completed stages
+  const completedStages = stages.filter(s => s.completed).length;
+  const progress = Math.round((completedStages / stages.length) * 100);
+  
+  // Determine status based on progress
+  let status: Project['status'] = 'Not Started';
+  if (progress === 100) {
+    status = 'Completed';
+  } else if (progress > 0) {
+    status = 'In Progress';
+  }
+  
+  const { error } = await supabase
+    .from('projects')
+    .update({ 
+      stages,
+      progress,
+      status
+    })
+    .eq('id', projectId);
+
+  if (error) {
+    console.error('Error updating stages:', error);
+    return undefined;
+  }
+
+  return getProjectById(projectId);
+};
+
+export const deleteProject = async (id: string): Promise<void> => {
+  console.log('Deleting project:', id);
+  
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting project:', error);
+    throw error;
+  }
 };
