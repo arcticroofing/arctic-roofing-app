@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,12 +16,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { updateProjectStatus, deleteProject } from '../services/projectService';
-import { Play, CheckCircle, Trash2, Edit } from 'lucide-react';
-import type { Project } from '../services/projectService';
+import { updateProjectStatus, deleteProject, type Project } from '../services/projectService';
+import { MoreVertical, Trash2, Edit } from 'lucide-react';
 
 interface ProjectActionsProps {
   project: Project;
@@ -34,161 +28,96 @@ interface ProjectActionsProps {
 export function ProjectActions({ project }: ProjectActionsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [progress, setProgress] = useState(project.progress.toString());
-  const [status, setStatus] = useState(project.status);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const updateMutation = useMutation({
-    mutationFn: () => updateProjectStatus(project.id, status, parseInt(progress)),
+  const updateStatusMutation = useMutation({
+    mutationFn: (status: 'Not Started' | 'In Progress' | 'Completed' | 'On Hold') =>
+      updateProjectStatus(project.id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project', project.id] });
       toast({
-        title: "Project Updated",
-        description: "Project status and progress updated successfully.",
+        title: 'Status Updated',
+        description: 'Project status has been updated successfully.',
       });
-      setDialogOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: 'Update Failed',
+        description: 'Failed to update project status.',
+        variant: 'destructive',
+      });
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteProjectMutation = useMutation({
     mutationFn: () => deleteProject(project.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       toast({
-        title: "Project Deleted",
-        description: "Project has been permanently deleted.",
+        title: 'Project Deleted',
+        description: 'Project has been deleted successfully.',
       });
+      setShowDeleteDialog(false);
     },
-  });
-
-  const startProjectMutation = useMutation({
-    mutationFn: () => updateProjectStatus(project.id, 'In Progress', 10),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
+    onError: () => {
       toast({
-        title: "Project Started",
-        description: "Project status changed to In Progress.",
-      });
-    },
-  });
-
-  const completeProjectMutation = useMutation({
-    mutationFn: () => updateProjectStatus(project.id, 'Completed', 100),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
-      toast({
-        title: "Project Completed",
-        description: "Project marked as completed!",
+        title: 'Delete Failed',
+        description: 'Failed to delete project.',
+        variant: 'destructive',
       });
     },
   });
 
   return (
-    <div className="flex gap-2 flex-wrap">
-      {/* Quick Actions */}
-      {project.status === 'Not Started' && (
-        <Button
-          size="sm"
-          onClick={() => startProjectMutation.mutate()}
-          disabled={startProjectMutation.isPending}
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          <Play size={16} className="mr-1" />
-          Start Project
-        </Button>
-      )}
-
-      {project.status === 'In Progress' && project.progress < 100 && (
-        <Button
-          size="sm"
-          onClick={() => completeProjectMutation.mutate()}
-          disabled={completeProjectMutation.isPending}
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          <CheckCircle size={16} className="mr-1" />
-          Mark Complete
-        </Button>
-      )}
-
-      {/* Update Progress Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogTrigger asChild>
-          <Button size="sm" variant="outline" className="border-[#96D7FE]/30 text-[#96D7FE] hover:bg-[#96D7FE]/10">
-            <Edit size={16} className="mr-1" />
-            Update Progress
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline" className="border-[#96D7FE]/30 text-white hover:bg-[#96D7FE]/10">
+            <MoreVertical size={16} />
           </Button>
-        </DialogTrigger>
-        <DialogContent className="bg-gray-900 border-[#96D7FE]/30 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-white">Update Project</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Update the status and progress for {project.homeownerName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="status" className="text-gray-300">Status</Label>
-              <select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as Project['status'])}
-                className="w-full mt-1 px-3 py-2 bg-black border border-[#96D7FE]/30 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#96D7FE]"
-              >
-                <option value="Not Started">Not Started</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="On Hold">On Hold</option>
-              </select>
-            </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="bg-gray-900 border-[#96D7FE]/30 text-white">
+          <DropdownMenuItem
+            onClick={() => updateStatusMutation.mutate('Not Started')}
+            className="hover:bg-[#96D7FE]/10 cursor-pointer"
+          >
+            Mark as Not Started
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => updateStatusMutation.mutate('In Progress')}
+            className="hover:bg-[#96D7FE]/10 cursor-pointer"
+          >
+            Mark as In Progress
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => updateStatusMutation.mutate('Completed')}
+            className="hover:bg-[#96D7FE]/10 cursor-pointer"
+          >
+            Mark as Completed
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => updateStatusMutation.mutate('On Hold')}
+            className="hover:bg-[#96D7FE]/10 cursor-pointer"
+          >
+            Mark as On Hold
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setShowDeleteDialog(true)}
+            className="hover:bg-red-500/10 text-red-400 cursor-pointer"
+          >
+            <Trash2 size={14} className="mr-2" />
+            Delete Project
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-            <div>
-              <Label htmlFor="progress" className="text-gray-300">
-                Progress: {progress}%
-              </Label>
-              <Input
-                id="progress"
-                type="range"
-                min="0"
-                max="100"
-                value={progress}
-                onChange={(e) => setProgress(e.target.value)}
-                className="mt-1"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>0%</span>
-                <span>50%</span>
-                <span>100%</span>
-              </div>
-            </div>
-
-            <Button
-              onClick={() => updateMutation.mutate()}
-              disabled={updateMutation.isPending}
-              className="w-full bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold"
-            >
-              {updateMutation.isPending ? 'Updating...' : 'Update Project'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Project */}
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button size="sm" variant="destructive">
-            <Trash2 size={16} className="mr-1" />
-            Delete
-          </Button>
-        </AlertDialogTrigger>
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="bg-gray-900 border-[#96D7FE]/30">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Project?</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-400">
-              This will permanently delete the project for {project.homeownerName}. 
-              This action cannot be undone.
+              This will permanently delete this project and all associated data. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -196,14 +125,14 @@ export function ProjectActions({ project }: ProjectActionsProps) {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteMutation.mutate()}
+              onClick={() => deleteProjectMutation.mutate()}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete Project'}
+              Delete Project
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
