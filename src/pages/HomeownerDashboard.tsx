@@ -8,6 +8,7 @@ import { getProjectById } from '../services/projectService';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectStages } from '../components/ProjectStages';
 import { PhotoGallery } from '../components/PhotoGallery';
+import { PhotoGalleryManager } from '../components/PhotoGalleryManager';
 import { Calendar, DollarSign, User, MapPin, Eye } from 'lucide-react';
 
 const HomeownerDashboard = () => {
@@ -147,6 +148,11 @@ const HomeownerDashboard = () => {
 
           <PhotoGallery photoGalleryUrl={project.photoGalleryUrl} />
 
+          <PhotoGalleryManager 
+            project={project} 
+            isManager={false} 
+          />
+
           <Card className="bg-gray-900 border-[#96D7FE]/30">
             <CardHeader>
               <CardTitle className="text-white">What We're Doing</CardTitle>
@@ -196,26 +202,6 @@ const HomeownerDashboard = () => {
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {project.photos.length > 0 && (
-            <Card className="bg-gray-900 border-[#96D7FE]/30">
-              <CardHeader>
-                <CardTitle className="text-white">Project Photos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {project.photos.map((photo, index) => (
-                    <img
-                      key={index}
-                      src={photo}
-                      alt={`Project photo ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg border border-[#96D7FE]/20 hover:border-[#96D7FE] transition-colors cursor-pointer"
-                    />
                   ))}
                 </div>
               </CardContent>

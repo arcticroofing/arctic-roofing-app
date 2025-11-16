@@ -10,6 +10,8 @@ import { ProjectStages } from '../components/ProjectStages';
 import { ProjectActions } from '../components/ProjectActions';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { EditPhotoGallery } from '../components/EditPhotoGallery';
+import { PhotoUpload } from '../components/PhotoUpload';
+import { PhotoGalleryManager } from '../components/PhotoGalleryManager';
 import { ArrowLeft, Calendar, DollarSign, User, MapPin, Briefcase } from 'lucide-react';
 
 const ProjectDetails = () => {
@@ -106,6 +108,10 @@ const ProjectDetails = () => {
                     <EditPhotoGallery 
                       projectId={project.id} 
                       currentUrl={project.photoGalleryUrl} 
+                    />
+                    <PhotoUpload 
+                      projectId={project.id} 
+                      currentPhotos={project.photos} 
                     />
                   </div>
                 )}
@@ -233,25 +239,10 @@ const ProjectDetails = () => {
             </Card>
           )}
 
-          {project.photos.length > 0 && (
-            <Card className="bg-gray-900 border-[#96D7FE]/30">
-              <CardHeader>
-                <CardTitle className="text-white">Project Photos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {project.photos.map((photo, index) => (
-                    <img
-                      key={index}
-                      src={photo}
-                      alt={`Project photo ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg border border-[#96D7FE]/20 hover:border-[#96D7FE] transition-colors cursor-pointer"
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <PhotoGalleryManager 
+            project={project} 
+            isManager={isManagerAuthenticated} 
+          />
         </div>
       </main>
     </div>
