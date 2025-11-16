@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getProjectById } from '../services/projectService';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectStages } from '../components/ProjectStages';
 import { PhotoGallery } from '../components/PhotoGallery';
-import { PhotoGalleryManager } from '../components/PhotoGalleryManager';
+import { PhotoLightbox } from '../components/PhotoLightbox';
 import { Calendar, DollarSign, User, MapPin, Eye } from 'lucide-react';
 
 const HomeownerDashboard = () => {
@@ -144,69 +145,112 @@ const HomeownerDashboard = () => {
             </div>
           </div>
 
-          <ProjectStages project={project} isManager={false} />
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 bg-gray-800 border border-[#96D7FE]/30">
+              <TabsTrigger 
+                value="overview" 
+                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black text-gray-300"
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger 
+                value="progress" 
+                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black text-gray-300"
+              >
+                Progress
+              </TabsTrigger>
+              <TabsTrigger 
+                value="photos" 
+                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black text-gray-300"
+              >
+                Photos ({project.photos.length})
+              </TabsTrigger>
+              <TabsTrigger 
+                value="updates" 
+                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black text-gray-300"
+              >
+                Updates ({project.updates.length})
+              </TabsTrigger>
+            </TabsList>
 
-          <PhotoGallery photoGalleryUrl={project.photoGalleryUrl} />
+            <TabsContent value="overview" className="space-y-8 mt-6">
+              <Card className="bg-gray-900 border-[#96D7FE]/30">
+                <CardHeader>
+                  <CardTitle className="text-white">What We're Doing</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {project.scope.map((item, index) => (
+                      <li key={index} className="flex items-start gap-3 text-gray-300">
+                        <span className="text-[#96D7FE] mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
 
-          <PhotoGalleryManager 
-            project={project} 
-            isManager={false} 
-          />
+              <PhotoGallery photoGalleryUrl={project.photoGalleryUrl} />
+            </TabsContent>
 
-          <Card className="bg-gray-900 border-[#96D7FE]/30">
-            <CardHeader>
-              <CardTitle className="text-white">What We're Doing</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {project.scope.map((item, index) => (
-                  <li key={index} className="flex items-start gap-3 text-gray-300">
-                    <span className="text-[#96D7FE] mt-1">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+            <TabsContent value="progress" className="space-y-8 mt-6">
+              <ProjectStages project={project} isManager={false} />
+            </TabsContent>
 
-          {project.updates.length > 0 && (
-            <Card className="bg-gray-900 border-[#96D7FE]/30">
-              <CardHeader>
-                <CardTitle className="text-white">Recent Updates</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {project.updates.map((update) => (
-                    <div key={update.id} className="border-l-2 border-[#96D7FE] pl-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm text-gray-400">
-                          {new Date(update.date).toLocaleDateString()}
-                        </span>
-                        <span className="text-sm text-gray-500">•</span>
-                        <span className="text-sm text-gray-400">{update.author}</span>
-                      </div>
-                      <h4 className="text-lg font-semibold text-white mb-2">
-                        {update.title}
-                      </h4>
-                      <p className="text-gray-300 mb-3">{update.description}</p>
-                      {update.photos && update.photos.length > 0 && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {update.photos.map((photo, index) => (
-                            <img
-                              key={index}
-                              src={photo}
-                              alt={`Update ${index + 1}`}
-                              className="w-full h-48 object-cover rounded-lg border border-[#96D7FE]/20"
-                            />
-                          ))}
+            <TabsContent value="photos" className="space-y-8 mt-6">
+              <PhotoLightbox 
+                project={project} 
+                isManager={false} 
+              />
+            </TabsContent>
+
+            <TabsContent value="updates" className="space-y-8 mt-6">
+              {project.updates.length > 0 ? (
+                <Card className="bg-gray-900 border-[#96D7FE]/30">
+                  <CardHeader>
+                    <CardTitle className="text-white">Recent Updates</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {project.updates.map((update) => (
+                        <div key={update.id} className="border-l-2 border-[#96D7FE] pl-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm text-gray-400">
+                              {new Date(update.date).toLocaleDateString()}
+                            </span>
+                            <span className="text-sm text-gray-500">•</span>
+                            <span className="text-sm text-gray-400">{update.author}</span>
+                          </div>
+                          <h4 className="text-lg font-semibold text-white mb-2">
+                            {update.title}
+                          </h4>
+                          <p className="text-gray-300 mb-3">{update.description}</p>
+                          {update.photos && update.photos.length > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                              {update.photos.map((photo, index) => (
+                                <img
+                                  key={index}
+                                  src={photo}
+                                  alt={`Update ${index + 1}`}
+                                  className="w-full h-48 object-cover rounded-lg border border-[#96D7FE]/20"
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="bg-gray-900 border-[#96D7FE]/30">
+                  <CardContent className="py-12 text-center">
+                    <p className="text-gray-400">No updates yet</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
 
           <div className="flex justify-center">
             <Button
