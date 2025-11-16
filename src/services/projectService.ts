@@ -56,11 +56,11 @@ export const createProject = async (projectData: {
   console.log('Creating project with data:', projectData);
 
   const defaultStages = [
-    { id: '1', name: 'Initial Inspection', completed: false, completedDate: null },
-    { id: '2', name: 'Material Delivery', completed: false, completedDate: null },
-    { id: '3', name: 'Roof Installation', completed: false, completedDate: null },
-    { id: '4', name: 'Clean Up', completed: false, completedDate: null },
-    { id: '5', name: 'Final Inspection', completed: false, completedDate: null },
+    { id: '1', name: 'Arrival & Protection Setup', completed: false, completedDate: null },
+    { id: '2', name: 'Tear-Off & Preparation', completed: false, completedDate: null },
+    { id: '3', name: 'Underlayment & Drip Edge', completed: false, completedDate: null },
+    { id: '4', name: 'Shingle Installation', completed: false, completedDate: null },
+    { id: '5', name: 'Final Cleanup & Inspection', completed: false, completedDate: null },
   ];
 
   const { data, error } = await supabase
