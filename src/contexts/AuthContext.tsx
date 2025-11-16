@@ -1,67 +1,104 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Homeowner, getCurrentHomeowner, setCurrentHomeowner, logoutHomeowner } from '../services/authService';
-import { Manager, getCurrentManager, setCurrentManager, logoutManager } from '../services/managerAuthService';
+import { 
+  loginManager, 
+  loginHomeowner, 
+  logoutManager, 
+  logoutHomeowner,
+  type Manager, 
+  type Homeowner 
+} from '../services/authService';
 
 interface AuthContextType {
-  currentHomeowner: Homeowner | null;
   currentManager: Manager | null;
-  loginHomeowner: (homeowner: Homeowner) => void;
-  loginManager: (manager: Manager) => void;
-  logoutHomeowner: () => void;
-  logoutManager: () => void;
-  isHomeownerAuthenticated: boolean;
+  currentHomeowner: Homeowner | null;
   isManagerAuthenticated: boolean;
+  isHomeownerAuthenticated: boolean;
+  handleManagerLogin: (email: string, password: string) => Promise<boolean>;
+  handleHomeownerLogin: (email: string, password: string) => Promise<boolean>;
+  handleManagerLogout: () => void;
+  handleHomeownerLogout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentHomeowner, setCurrentHomeownerState] = useState<Homeowner | null>(null);
   const [currentManager, setCurrentManagerState] = useState<Manager | null>(null);
+  const [currentHomeowner, setCurrentHomeownerState] = useState<Homeowner | null>(null);
+  const [isManagerAuthenticated, setIsManagerAuthenticated] = useState(false);
+  const [isHomeownerAuthenticated, setIsHomeownerAuthenticated] = useState(false);
 
   useEffect(() => {
-    const homeowner = getCurrentHomeowner();
-    if (homeowner) {
-      setCurrentHomeownerState(homeowner);
+    const storedManager = localStorage.getItem('currentManager');
+    const storedHomeowner = localStorage.getItem('currentHomeowner');
+
+    if (storedManager) {
+      try {
+        const manager = JSON.parse(storedManager);
+        setCurrentManagerState(manager);
+        setIsManagerAuthenticated(true);
+      } catch (e) {
+        console.error('Error parsing stored manager:', e);
+        localStorage.removeItem('currentManager');
+      }
     }
 
-    const manager = getCurrentManager();
-    if (manager) {
-      setCurrentManagerState(manager);
+    if (storedHomeowner) {
+      try {
+        const homeowner = JSON.parse(storedHomeowner);
+        setCurrentHomeownerState(homeowner);
+        setIsHomeownerAuthenticated(true);
+      } catch (e) {
+        console.error('Error parsing stored homeowner:', e);
+        localStorage.removeItem('currentHomeowner');
+      }
     }
   }, []);
 
-  const loginHomeownerHandler = (homeowner: Homeowner) => {
-    setCurrentHomeowner(homeowner);
-    setCurrentHomeownerState(homeowner);
+  const handleManagerLogin = async (email: string, password: string): Promise<boolean> => {
+    const manager = await loginManager(email, password);
+    if (manager) {
+      setCurrentManagerState(manager);
+      setIsManagerAuthenticated(true);
+      return true;
+    }
+    return false;
   };
 
-  const loginManagerHandler = (manager: Manager) => {
-    setCurrentManager(manager);
-    setCurrentManagerState(manager);
+  const handleHomeownerLogin = async (email: string, password: string): Promise<boolean> => {
+    const homeowner = await loginHomeowner(email, password);
+    if (homeowner) {
+      setCurrentHomeownerState(homeowner);
+      setIsHomeownerAuthenticated(true);
+      return true;
+    }
+    return false;
   };
 
-  const logoutHomeownerHandler = () => {
-    logoutHomeowner();
-    setCurrentHomeownerState(null);
-  };
-
-  const logoutManagerHandler = () => {
+  const handleManagerLogout = () => {
     logoutManager();
     setCurrentManagerState(null);
+    setIsManagerAuthenticated(false);
+  };
+
+  const handleHomeownerLogout = () => {
+    logoutHomeowner();
+    setCurrentHomeownerState(null);
+    setIsHomeownerAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{
-      currentHomeowner,
-      currentManager,
-      loginHomeowner: loginHomeownerHandler,
-      loginManager: loginManagerHandler,
-      logoutHomeowner: logoutHomeownerHandler,
-      logoutManager: logoutManagerHandler,
-      isHomeownerAuthenticated: !!currentHomeowner,
-      isManagerAuthenticated: !!currentManager
-    }}>
+    <AuthContext.Provider
+      value={{
+        currentManager,
+        currentHomeowner,
+        isManagerAuthenticated,
+        isHomeownerAuthenticated,
+        handleManagerLogin,
+        handleHomeownerLogin,
+        handleManagerLogout,
+        handleHomeownerLogout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -69,8 +106,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
