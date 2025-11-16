@@ -1,198 +1,116 @@
-import { supabase } from '@/lib/supabase';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { 
+  loginManager, 
+  loginHomeowner, 
+  logoutManager, 
+  logoutHomeowner,
+  setCurrentManager,
+  setCurrentHomeowner,
+  type Manager, 
+  type Homeowner 
+} from '../services/authService';
 
-export interface Manager {
-  id: string;
-  email: string;
-  password: string;
-  name: string;
-  role: string;
+interface AuthContextType {
+  currentManager: Manager | null;
+  currentHomeowner: Homeowner | null;
+  isManagerAuthenticated: boolean;
+  isHomeownerAuthenticated: boolean;
+  handleManagerLogin: (email: string, password: string) => Promise<boolean>;
+  handleHomeownerLogin: (email: string, password: string) => Promise<boolean>;
+  handleManagerLogout: () => void;
+  handleHomeownerLogout: () => void;
 }
 
-export interface Homeowner {
-  id: string;
-  email: string;
-  password: string;
-  name: string;
-  projectId: string;
-}
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Manager Auth Functions
-export const loginManager = async (email: string, password: string): Promise<Manager | null> => {
-  console.log('Attempting manager login with Supabase:', email);
-  
-  const { data, error } = await supabase
-    .from('managers')
-    .select('*')
-    .eq('email', email.toLowerCase())
-    .single();
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentManager, setCurrentManagerState] = useState<Manager | null>(null);
+  const [currentHomeowner, setCurrentHomeownerState] = useState<Homeowner | null>(null);
+  const [isManagerAuthenticated, setIsManagerAuthenticated] = useState(false);
+  const [isHomeownerAuthenticated, setIsHomeownerAuthenticated] = useState(false);
 
-  if (error || !data) {
-    console.error('Manager login error:', error);
-    return null;
-  }
+  // Load from localStorage on mount
+  useEffect(() => {
+    const storedManager = localStorage.getItem('currentManager');
+    const storedHomeowner = localStorage.getItem('currentHomeowner');
 
-  if (data.password_hash !== password) {
-    console.error('Password mismatch');
-    return null;
-  }
+    if (storedManager) {
+      try {
+        const manager = JSON.parse(storedManager);
+        setCurrentManagerState(manager);
+        setIsManagerAuthenticated(true);
+      } catch (e) {
+        console.error('Error parsing stored manager:', e);
+        localStorage.removeItem('currentManager');
+      }
+    }
 
-  console.log('Manager found:', data);
-  
-  return {
-    id: data.id,
-    email: data.email,
-    password: data.password_hash,
-    name: data.name,
-    role: data.role
+    if (storedHomeowner) {
+      try {
+        const homeowner = JSON.parse(storedHomeowner);
+        setCurrentHomeownerState(homeowner);
+        setIsHomeownerAuthenticated(true);
+      } catch (e) {
+        console.error('Error parsing stored homeowner:', e);
+        localStorage.removeItem('currentHomeowner');
+      }
+    }
+  }, []);
+
+  const handleManagerLogin = async (email: string, password: string): Promise<boolean> => {
+    const manager = await loginManager(email, password);
+    if (manager) {
+      setCurrentManagerState(manager);
+      setIsManagerAuthenticated(true);
+      return true;
+    }
+    return false;
   };
-};
 
-export const logoutManager = (): void => {
-  console.log('Manager logged out');
-  localStorage.removeItem('currentManager');
-};
-
-export const setCurrentManager = (manager: Manager): void => {
-  localStorage.setItem('currentManager', JSON.stringify(manager));
-};
-
-export const getCurrentManager = async (managerId: string): Promise<Manager | null> => {
-  console.log('Fetching current manager:', managerId);
-  
-  const { data, error } = await supabase
-    .from('managers')
-    .select('*')
-    .eq('id', managerId)
-    .single();
-
-  if (error || !data) {
-    console.error('Error fetching manager:', error);
-    return null;
-  }
-
-  return {
-    id: data.id,
-    email: data.email,
-    password: data.password_hash,
-    name: data.name,
-    role: data.role
+  const handleHomeownerLogin = async (email: string, password: string): Promise<boolean> => {
+    const homeowner = await loginHomeowner(email, password);
+    if (homeowner) {
+      setCurrentHomeownerState(homeowner);
+      setIsHomeownerAuthenticated(true);
+      return true;
+    }
+    return false;
   };
-};
 
-// Homeowner Auth Functions
-export const loginHomeowner = async (email: string, password: string): Promise<Homeowner | null> => {
-  console.log('🔐 Attempting homeowner login');
-  console.log('📧 Email entered:', email);
-  console.log('🔑 Password entered:', password);
-  
-  const { data, error } = await supabase
-    .from('homeowners')
-    .select('*')
-    .eq('email', email.toLowerCase())
-    .single();
-
-  console.log('📊 Query result:', data);
-  console.log('❌ Query error:', error);
-
-  if (error || !data) {
-    console.error('❌ Homeowner not found in database');
-    return null;
-  }
-
-  console.log('✅ Homeowner found:', data.email);
-  console.log('🔑 Stored password:', data.password_hash);
-  console.log('🔑 Entered password:', password);
-  console.log('🔍 Passwords match:', data.password_hash === password);
-
-  if (data.password_hash !== password) {
-    console.error('❌ Password mismatch!');
-    return null;
-  }
-
-  console.log('✅ Login successful!');
-  
-  return {
-    id: data.id,
-    email: data.email,
-    password: data.password_hash,
-    name: data.name,
-    projectId: data.project_id
+  const handleManagerLogout = () => {
+    logoutManager();
+    setCurrentManagerState(null);
+    setIsManagerAuthenticated(false);
   };
-};
 
-export const logoutHomeowner = (): void => {
-  console.log('Homeowner logged out');
-  localStorage.removeItem('currentHomeowner');
-};
-
-export const setCurrentHomeowner = (homeowner: Homeowner): void => {
-  localStorage.setItem('currentHomeowner', JSON.stringify(homeowner));
-};
-
-export const getCurrentHomeowner = async (homeownerId: string): Promise<Homeowner | null> => {
-  console.log('Fetching current homeowner:', homeownerId);
-  
-  const { data, error } = await supabase
-    .from('homeowners')
-    .select('*')
-    .eq('id', homeownerId)
-    .single();
-
-  if (error || !data) {
-    console.error('Error fetching homeowner:', error);
-    return null;
-  }
-
-  return {
-    id: data.id,
-    email: data.email,
-    password: data.password_hash,
-    name: data.name,
-    projectId: data.project_id
+  const handleHomeownerLogout = () => {
+    logoutHomeowner();
+    setCurrentHomeownerState(null);
+    setIsHomeownerAuthenticated(false);
   };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        currentManager,
+        currentHomeowner,
+        isManagerAuthenticated,
+        isHomeownerAuthenticated,
+        handleManagerLogin,
+        handleHomeownerLogin,
+        handleManagerLogout,
+        handleHomeownerLogout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-// Account Creation
-export const createHomeownerAccount = async (
-  name: string,
-  email: string,
-  projectId: string
-): Promise<{ homeowner: Homeowner; temporaryPassword: string }> => {
-  const temporaryPassword = `Arctic${Math.floor(Math.random() * 10000)}`;
-  
-  console.log('🏠 Creating homeowner account...');
-  console.log('📧 Email:', email);
-  console.log('👤 Name:', name);
-  console.log('🔑 Generated Password:', temporaryPassword);
-  console.log('📋 Project ID:', projectId);
-  
-  const { data, error } = await supabase
-    .from('homeowners')
-    .insert([{
-      email: email.toLowerCase(),
-      password_hash: temporaryPassword,
-      name: name,
-      project_id: projectId
-    }])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('❌ Error creating homeowner:', error);
-    throw error;
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-
-  console.log('✅ Homeowner created successfully:', data);
-  console.log('✅ Password saved to database:', data.password_hash);
-
-  return {
-    homeowner: {
-      id: data.id,
-      email: data.email,
-      password: data.password_hash,
-      name: data.name,
-      projectId: data.project_id
-    },
-    temporaryPassword: data.password_hash
-  };
+  return context;
 };
