@@ -85,110 +85,93 @@ const HomeownerDashboard = () => {
       </header>
 
       <main className="flex-1 overflow-auto bg-black p-3 sm:p-6">
-        <div className="max-w-6xl mx-auto space-y-4 sm:space-y-8">
-          <div className="bg-gray-900 rounded-lg shadow-md p-4 sm:p-6 border border-[#96D7FE]/20">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-xl sm:text-3xl font-bold text-white mb-2 break-words">
-                    {project.projectType}
-                  </h2>
-                  <div className="flex items-start gap-2 text-gray-400 mb-2 text-sm sm:text-base">
-                    <MapPin size={16} className="flex-shrink-0 mt-0.5" />
-                    <span className="break-words">{project.address}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-400 text-sm sm:text-base">
-                    <User size={16} className="flex-shrink-0" />
-                    <span className="truncate">PM: {project.projectManager}</span>
-                  </div>
+        <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+          {/* Compact Project Header */}
+          <div className="bg-gray-900 rounded-lg shadow-md p-4 border border-[#96D7FE]/20">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-1 break-words">
+                  {project.projectType}
+                </h2>
+                <div className="flex items-start gap-2 text-gray-400 text-xs sm:text-sm">
+                  <MapPin size={14} className="flex-shrink-0 mt-0.5" />
+                  <span className="break-words">{project.address}</span>
                 </div>
-                <span className={`${statusColors[project.status]} text-black px-3 sm:px-6 py-2 sm:py-3 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap flex-shrink-0`}>
-                  {project.status}
-                </span>
               </div>
+              <span className={`${statusColors[project.status]} text-black px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0`}>
+                {project.status}
+              </span>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <Card className="bg-gray-800 border-[#96D7FE]/20">
-                  <CardHeader className="pb-2 sm:pb-3">
-                    <CardTitle className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-2">
-                      <Calendar size={14} className="sm:w-4 sm:h-4" />
-                      Start Date
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-base sm:text-xl font-bold text-white">
-                      {new Date(project.startDate).toLocaleDateString()}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gray-800 border-[#96D7FE]/20">
-                  <CardHeader className="pb-2 sm:pb-3">
-                    <CardTitle className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-2">
-                      <Calendar size={14} className="sm:w-4 sm:h-4" />
-                      Est. Completion
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-base sm:text-xl font-bold text-white">
-                      {new Date(project.estimatedCompletion).toLocaleDateString()}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gray-800 border-[#96D7FE]/20">
-                  <CardHeader className="pb-2 sm:pb-3">
-                    <CardTitle className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-2">
-                      <DollarSign size={14} className="sm:w-4 sm:h-4" />
-                      Project Budget
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-base sm:text-xl font-bold text-white">
-                      ${project.budget.toLocaleString()}
-                    </p>
-                  </CardContent>
-                </Card>
+            {/* Compact Info Row */}
+            <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm text-gray-400 pt-3 border-t border-gray-800">
+              <div className="flex items-center gap-1.5">
+                <Calendar size={14} className="text-[#96D7FE]" />
+                <span className="font-medium text-gray-300">Start:</span>
+                <span>{new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar size={14} className="text-[#96D7FE]" />
+                <span className="font-medium text-gray-300">Est. Done:</span>
+                <span>{new Date(project.estimatedCompletion).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <DollarSign size={14} className="text-[#96D7FE]" />
+                <span className="font-medium text-gray-300">Budget:</span>
+                <span>${project.budget.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <User size={14} className="text-[#96D7FE]" />
+                <span className="font-medium text-gray-300">PM:</span>
+                <span className="truncate">{project.projectManager}</span>
               </div>
             </div>
           </div>
 
+          {/* PROMINENT TABS */}
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-800 border border-[#96D7FE]/30 h-auto">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-900 border-2 border-[#96D7FE]/40 h-auto p-1 rounded-xl shadow-lg shadow-[#96D7FE]/10">
               <TabsTrigger 
                 value="overview" 
-                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black text-gray-300 text-xs sm:text-sm py-2 sm:py-2.5 flex items-center justify-center gap-1"
+                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black data-[state=active]:shadow-lg text-gray-300 text-sm sm:text-base py-3 sm:py-4 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-lg font-semibold transition-all"
               >
-                <FileText size={14} className="sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Overview</span>
-                <span className="sm:hidden">Info</span>
+                <FileText size={18} className="sm:w-5 sm:h-5" />
+                <span className="text-xs sm:text-base">Overview</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="progress" 
-                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black text-gray-300 text-xs sm:text-sm py-2 sm:py-2.5 flex items-center justify-center gap-1"
+                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black data-[state=active]:shadow-lg text-gray-300 text-sm sm:text-base py-3 sm:py-4 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-lg font-semibold transition-all"
               >
-                <TrendingUp size={14} className="sm:w-4 sm:h-4" />
-                <span>Progress</span>
+                <TrendingUp size={18} className="sm:w-5 sm:h-5" />
+                <span className="text-xs sm:text-base">Progress</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="photos" 
-                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black text-gray-300 text-xs sm:text-sm py-2 sm:py-2.5 flex items-center justify-center gap-1"
+                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black data-[state=active]:shadow-lg text-gray-300 text-sm sm:text-base py-3 sm:py-4 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-lg font-semibold transition-all"
               >
-                <ImageIcon size={14} className="sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Photos ({project.photos.length})</span>
-                <span className="sm:hidden">Photos</span>
+                <ImageIcon size={18} className="sm:w-5 sm:h-5" />
+                <div className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1">
+                  <span className="text-xs sm:text-base">Photos</span>
+                  <span className="text-xs bg-[#96D7FE]/20 px-1.5 py-0.5 rounded">
+                    {project.photos.length}
+                  </span>
+                </div>
               </TabsTrigger>
               <TabsTrigger 
                 value="updates" 
-                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black text-gray-300 text-xs sm:text-sm py-2 sm:py-2.5 flex items-center justify-center gap-1"
+                className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black data-[state=active]:shadow-lg text-gray-300 text-sm sm:text-base py-3 sm:py-4 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-lg font-semibold transition-all"
               >
-                <Bell size={14} className="sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Updates ({project.updates.length})</span>
-                <span className="sm:hidden">Updates</span>
+                <Bell size={18} className="sm:w-5 sm:h-5" />
+                <div className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1">
+                  <span className="text-xs sm:text-base">Updates</span>
+                  <span className="text-xs bg-[#96D7FE]/20 px-1.5 py-0.5 rounded">
+                    {project.updates.length}
+                  </span>
+                </div>
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-4 sm:space-y-8 mt-4 sm:mt-6">
+            <TabsContent value="overview" className="space-y-4 sm:space-y-6 mt-6">
               <Card className="bg-gray-900 border-[#96D7FE]/30">
                 <CardHeader>
                   <CardTitle className="text-white text-base sm:text-lg">What We're Doing</CardTitle>
@@ -208,18 +191,18 @@ const HomeownerDashboard = () => {
               <PhotoGallery photoGalleryUrl={project.photoGalleryUrl} />
             </TabsContent>
 
-            <TabsContent value="progress" className="space-y-4 sm:space-y-8 mt-4 sm:mt-6">
+            <TabsContent value="progress" className="space-y-4 sm:space-y-6 mt-6">
               <ProjectStages project={project} isManager={false} />
             </TabsContent>
 
-            <TabsContent value="photos" className="space-y-4 sm:space-y-8 mt-4 sm:mt-6">
+            <TabsContent value="photos" className="space-y-4 sm:space-y-6 mt-6">
               <PhotoLightbox 
                 project={project} 
                 isManager={false} 
               />
             </TabsContent>
 
-            <TabsContent value="updates" className="space-y-4 sm:space-y-8 mt-4 sm:mt-6">
+            <TabsContent value="updates" className="space-y-4 sm:space-y-6 mt-6">
               {project.updates.length > 0 ? (
                 <Card className="bg-gray-900 border-[#96D7FE]/30">
                   <CardHeader>
