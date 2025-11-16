@@ -86,7 +86,6 @@ const HomeownerDashboard = () => {
 
       <main className="flex-1 overflow-auto bg-black p-3 sm:p-6">
         <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
-          {/* Compact Project Header */}
           <div className="bg-gray-900 rounded-lg shadow-md p-4 border border-[#96D7FE]/20">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex-1 min-w-0">
@@ -103,32 +102,44 @@ const HomeownerDashboard = () => {
               </span>
             </div>
 
-            {/* Compact Info Row */}
-            <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm text-gray-400 pt-3 border-t border-gray-800">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-400 pt-3 border-t border-gray-800">
               <div className="flex items-center gap-1.5">
-                <Calendar size={14} className="text-[#96D7FE]" />
+                <Calendar size={14} className="text-[#96D7FE] flex-shrink-0" />
                 <span className="font-medium text-gray-300">Start:</span>
-                <span>{new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                <span>{new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Calendar size={14} className="text-[#96D7FE]" />
+                <Calendar size={14} className="text-[#96D7FE] flex-shrink-0" />
                 <span className="font-medium text-gray-300">Est. Done:</span>
-                <span>{new Date(project.estimatedCompletion).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                <span>{new Date(project.estimatedCompletion).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <DollarSign size={14} className="text-[#96D7FE]" />
+                <DollarSign size={14} className="text-[#96D7FE] flex-shrink-0" />
                 <span className="font-medium text-gray-300">Budget:</span>
                 <span>${project.budget.toLocaleString()}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <User size={14} className="text-[#96D7FE]" />
+                <User size={14} className="text-[#96D7FE] flex-shrink-0" />
                 <span className="font-medium text-gray-300">PM:</span>
                 <span className="truncate">{project.projectManager}</span>
               </div>
+              {project.shingleSelection && project.shingleSelection !== 'Not Selected' && (
+                <div className="flex items-start gap-1.5 sm:col-span-2">
+                  <span className="text-[#96D7FE] flex-shrink-0">🏠</span>
+                  <span className="font-medium text-gray-300">Shingles:</span>
+                  <span className="break-words">{project.shingleSelection}</span>
+                </div>
+              )}
+              {project.gutterColor && project.gutterColor !== 'Not Selected' && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[#96D7FE] flex-shrink-0">🌊</span>
+                  <span className="font-medium text-gray-300">Gutter:</span>
+                  <span>{project.gutterColor} {project.gutterSize && project.gutterSize !== 'Not Selected' ? `(${project.gutterSize})` : ''}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* PROMINENT TABS */}
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-900 border-2 border-[#96D7FE]/40 h-auto p-1 rounded-xl shadow-lg shadow-[#96D7FE]/10">
               <TabsTrigger 
