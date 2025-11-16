@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Shield } from 'lucide-react';
 
 const ManagerLogin = () => {
   const navigate = useNavigate();
@@ -57,6 +58,11 @@ const ManagerLogin = () => {
     <div className="min-h-screen flex items-center justify-center bg-black p-4">
       <Card className="w-full max-w-md bg-gray-900 border-[#96D7FE]/30">
         <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="bg-[#96D7FE]/20 p-4 rounded-full border-2 border-[#96D7FE]">
+              <Shield className="text-[#96D7FE]" size={32} />
+            </div>
+          </div>
           <CardTitle className="text-3xl font-bold text-white">Manager Portal</CardTitle>
           <CardDescription className="text-gray-400">
             Login to manage roofing projects
