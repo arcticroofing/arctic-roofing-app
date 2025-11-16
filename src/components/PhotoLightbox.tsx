@@ -79,19 +79,19 @@ export function PhotoLightbox({ project, isManager }: PhotoLightboxProps) {
     <>
       <Card className="bg-gray-900 border-[#96D7FE]/30">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <ImageIcon size={24} className="text-[#96D7FE]" />
+          <CardTitle className="text-white flex items-center gap-2 text-base sm:text-lg">
+            <ImageIcon size={20} className="sm:w-6 sm:h-6 text-[#96D7FE]" />
             Project Photos ({project.photos.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
             {project.photos.map((photo, index) => (
               <div key={index} className="relative group">
                 <img
                   src={photo}
                   alt={`Project photo ${index + 1}`}
-                  className="w-full h-48 object-cover rounded-lg border border-[#96D7FE]/20 hover:border-[#96D7FE] transition-all cursor-pointer hover:scale-105"
+                  className="w-full h-32 sm:h-48 object-cover rounded-lg border border-[#96D7FE]/20 hover:border-[#96D7FE] transition-all cursor-pointer hover:scale-105 active:scale-95"
                   onClick={() => {
                     setCurrentIndex(index);
                     setLightboxOpen(true);
@@ -101,13 +101,13 @@ export function PhotoLightbox({ project, isManager }: PhotoLightboxProps) {
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
                     onClick={(e) => {
                       e.stopPropagation();
                       setPhotoToDelete(photo);
                     }}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} />
                   </Button>
                 )}
                 <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
