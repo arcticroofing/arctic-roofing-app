@@ -152,11 +152,12 @@ export function CreateProject() {
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold">
-          <Plus className="mr-2" size={18} />
-          Create New Project
-        </Button>
-      </DialogTrigger>
+  <Button className="bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold text-sm sm:text-base px-3 sm:px-4 py-2 whitespace-nowrap">
+    <Plus className="mr-1 sm:mr-2" size={16} />
+    <span className="hidden xs:inline">Create New Project</span>
+    <span className="xs:hidden">New</span>
+  </Button>
+</DialogTrigger>
       <DialogContent className="bg-gray-900 border-[#96D7FE]/30 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white">Create New Project</DialogTitle>
