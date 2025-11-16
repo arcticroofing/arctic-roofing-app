@@ -262,16 +262,6 @@ const HomeownerDashboard = () => {
               )}
             </TabsContent>
           </Tabs>
-
-          <div className="flex justify-center pb-4">
-            <Button
-              onClick={() => navigate(`/project/${project.id}`)}
-              className="bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-lg w-full sm:w-auto"
-            >
-              <Eye className="mr-2" size={18} />
-              View Full Details
-            </Button>
-          </div>
         </div>
       </main>
     </div>
