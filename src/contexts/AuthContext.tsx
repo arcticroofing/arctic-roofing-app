@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
-  loginManager, 
-  loginHomeowner, 
-  logoutManager, 
-  logoutHomeowner,
+  loginManager as loginManagerService, 
+  loginHomeowner as loginHomeownerService, 
+  logoutManager as logoutManagerService, 
+  logoutHomeowner as logoutHomeownerService,
   type Manager, 
   type Homeowner 
 } from '../services/authService';
@@ -13,10 +13,10 @@ interface AuthContextType {
   currentHomeowner: Homeowner | null;
   isManagerAuthenticated: boolean;
   isHomeownerAuthenticated: boolean;
-  handleManagerLogin: (email: string, password: string) => Promise<boolean>;
-  handleHomeownerLogin: (email: string, password: string) => Promise<boolean>;
-  handleManagerLogout: () => void;
-  handleHomeownerLogout: () => void;
+  loginManager: (email: string, password: string) => Promise<boolean>;
+  loginHomeowner: (email: string, password: string) => Promise<boolean>;
+  logoutManager: () => void;
+  logoutHomeowner: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,8 +54,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const handleManagerLogin = async (email: string, password: string): Promise<boolean> => {
-    const manager = await loginManager(email, password);
+  const loginManager = async (email: string, password: string): Promise<boolean> => {
+    const manager = await loginManagerService(email, password);
     if (manager) {
       setCurrentManagerState(manager);
       setIsManagerAuthenticated(true);
@@ -64,8 +64,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
-  const handleHomeownerLogin = async (email: string, password: string): Promise<boolean> => {
-    const homeowner = await loginHomeowner(email, password);
+  const loginHomeowner = async (email: string, password: string): Promise<boolean> => {
+    const homeowner = await loginHomeownerService(email, password);
     if (homeowner) {
       setCurrentHomeownerState(homeowner);
       setIsHomeownerAuthenticated(true);
@@ -74,14 +74,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
-  const handleManagerLogout = () => {
-    logoutManager();
+  const logoutManager = () => {
+    logoutManagerService();
     setCurrentManagerState(null);
     setIsManagerAuthenticated(false);
   };
 
-  const handleHomeownerLogout = () => {
-    logoutHomeowner();
+  const logoutHomeowner = () => {
+    logoutHomeownerService();
     setCurrentHomeownerState(null);
     setIsHomeownerAuthenticated(false);
   };
@@ -93,10 +93,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentHomeowner,
         isManagerAuthenticated,
         isHomeownerAuthenticated,
-        handleManagerLogin,
-        handleHomeownerLogin,
-        handleManagerLogout,
-        handleHomeownerLogout,
+        loginManager,
+        loginHomeowner,
+        logoutManager,
+        logoutHomeowner,
       }}
     >
       {children}
