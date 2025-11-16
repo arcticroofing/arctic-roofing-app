@@ -247,6 +247,43 @@ export const updateProjectProgress = async (
   }
 };
 
+export const updateProjectStages = async (
+  projectId: string,
+  stages: ProjectStage[]
+): Promise<void> => {
+  const completedStages = stages.filter((s) => s.completed).length;
+  const progress = Math.round((completedStages / stages.length) * 100);
+
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      stages: stages,
+      progress: progress,
+      status: progress === 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started',
+    })
+    .eq('id', projectId);
+
+  if (error) {
+    console.error('Error updating project stages:', error);
+    throw error;
+  }
+};
+
+export const updateProjectStatus = async (
+  projectId: string,
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'On Hold'
+): Promise<void> => {
+  const { error } = await supabase
+    .from('projects')
+    .update({ status })
+    .eq('id', projectId);
+
+  if (error) {
+    console.error('Error updating project status:', error);
+    throw error;
+  }
+};
+
 export const deleteProject = async (projectId: string): Promise<void> => {
   const { error: updatesError } = await supabase
     .from('project_updates')
@@ -288,3 +325,33 @@ export const updatePhotoGalleryUrl = async (
     throw error;
   }
 };
+
+export const addProjectUpdate = async (
+  projectId: string,
+  update: {
+    title: string;
+    description: string;
+    author: string;
+    photos?: string[];
+  }
+): Promise<void> => {
+  const { error } = await supabase
+    .from('project_updates')
+    .insert([
+      {
+        project_id: projectId,
+        date: new Date().toISOString(),
+        title: update.title,
+        description: update.description,
+        author: update.author,
+        photos: update.photos || [],
+      },
+    ]);
+
+  if (error) {
+    console.error('Error adding project update:', error);
+    throw error;
+  }
+};
+
+export const getProjects = getAllProjects;
