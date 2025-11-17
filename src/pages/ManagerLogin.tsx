@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Shield } from 'lucide-react';
+import { ArrowLeft, Briefcase } from 'lucide-react';
 
 const ManagerLogin = () => {
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ const ManagerLogin = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="manager@arcticroofing.org"
+                  placeholder="manager@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -106,6 +106,7 @@ const ManagerLogin = () => {
             </form>
           </CardContent>
         </Card>
+      </div>
     </div>
   );
 };
