@@ -1,7 +1,6 @@
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,7 +23,6 @@ const HomeownerDashboard = () => {
     return localStorage.getItem('homeowner-active-tab') || 'overview';
   });
   
-  // FIXED: Move ref to component level
   const previousProjectRef = React.useRef<any>(null);
 
   React.useEffect(() => {
@@ -109,7 +107,6 @@ const HomeownerDashboard = () => {
     gcTime: 0,
   });
 
-  // FIXED: Update ref when project changes
   React.useEffect(() => {
     if (project) {
       previousProjectRef.current = project;
@@ -162,7 +159,6 @@ const HomeownerDashboard = () => {
             
             const oldProject = previousProjectRef.current;
             
-            // FIXED: Compare stages properly
             if (oldProject && changed.stages && oldProject.stages) {
               const oldStages = oldProject.stages;
               const newStages = changed.stages;
@@ -190,7 +186,6 @@ const HomeownerDashboard = () => {
               }
             }
             
-            // FIXED: Only check photos if stages didn't change
             if (notificationTitle === "Project Updated! 🔄" && oldProject && changed.photos) {
               const oldPhotos = oldProject.photos || [];
               const newPhotos = changed.photos || [];
@@ -204,7 +199,6 @@ const HomeownerDashboard = () => {
               }
             }
             
-            // Check if project completed
             if (changed.progress === 100 && oldProject?.progress !== 100) {
               notificationTitle = "Project Completed! 🎉";
               notificationBody = "All stages have been completed!";
@@ -212,7 +206,6 @@ const HomeownerDashboard = () => {
             
             console.log('📢 Notification:', notificationTitle, '-', notificationBody);
             
-            // Update the ref with new data
             previousProjectRef.current = {
               ...oldProject,
               stages: changed.stages,
@@ -338,7 +331,6 @@ const HomeownerDashboard = () => {
     return (
       <div className="flex flex-col h-full w-full bg-black">
         <header className="flex items-center sticky top-0 z-10 gap-2 sm:gap-4 border-b border-[#96D7FE]/20 bg-black px-3 sm:px-6 py-3 sm:py-4">
-          <SidebarTrigger className="text-[#96D7FE]" />
           <h1 className="text-lg sm:text-2xl font-semibold text-white">My Project</h1>
         </header>
         <main className="flex-1 flex items-center justify-center p-4">
@@ -355,7 +347,6 @@ const HomeownerDashboard = () => {
     return (
       <div className="flex flex-col h-full w-full bg-black">
         <header className="flex items-center sticky top-0 z-10 gap-2 sm:gap-4 border-b border-[#96D7FE]/20 bg-black px-3 sm:px-6 py-3 sm:py-4">
-          <SidebarTrigger className="text-[#96D7FE]" />
           <h1 className="text-lg sm:text-2xl font-semibold text-white">My Project</h1>
         </header>
         <main className="flex-1 flex items-center justify-center p-4">
@@ -372,7 +363,6 @@ const HomeownerDashboard = () => {
     <div className="flex flex-col h-full w-full bg-black">
       <header className="flex items-center justify-between sticky top-0 z-10 gap-2 border-b border-[#96D7FE]/20 bg-black px-3 sm:px-6 py-3 sm:py-4 shadow-lg shadow-[#96D7FE]/5">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-          <SidebarTrigger className="text-[#96D7FE]" />
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-2xl font-semibold text-white truncate">
               Welcome, {currentHomeowner?.name}!
