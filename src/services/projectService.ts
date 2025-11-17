@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabase';
 import { createHomeownerAccount } from './authService';
-import { sendLocalNotification } from './notificationService';
 
 export interface ProjectStage {
   id: string;
@@ -129,6 +128,8 @@ export const createProject = async (projectData: {
 };
 
 export const getAllProjects = async (): Promise<Project[]> => {
+  console.log('📥 Fetching all projects from Supabase...');
+
   const { data, error } = await supabase
     .from('projects')
     .select('*')
@@ -144,7 +145,7 @@ export const getAllProjects = async (): Promise<Project[]> => {
     .select('*')
     .order('date', { ascending: false });
 
-  return data.map((project) => ({
+  const projects = data.map((project) => ({
     id: project.id,
     homeownerName: project.homeowner_name,
     homeownerEmail: project.homeowner_email,
@@ -174,9 +175,14 @@ export const getAllProjects = async (): Promise<Project[]> => {
     gutterColor: project.gutter_color,
     gutterSize: project.gutter_size,
   }));
+
+  console.log('✅ Fetched', projects.length, 'projects');
+  return projects;
 };
 
 export const getProjectById = async (id: string): Promise<Project | null> => {
+  console.log('📥 Fetching project:', id);
+
   const { data, error } = await supabase
     .from('projects')
     .select('*')
@@ -203,7 +209,7 @@ export const getProjectById = async (id: string): Promise<Project | null> => {
     photos: update.photos || [],
   }));
 
-  return {
+  const project = {
     id: data.id,
     homeownerName: data.homeowner_name,
     homeownerEmail: data.homeowner_email,
@@ -224,34 +230,9 @@ export const getProjectById = async (id: string): Promise<Project | null> => {
     gutterColor: data.gutter_color,
     gutterSize: data.gutter_size,
   };
-};
 
-export const updateProjectProgress = async (
-  projectId: string,
-  stages: ProjectStage[]
-): Promise<void> => {
-  const completedStages = stages.filter((s) => s.completed).length;
-  const progress = Math.round((completedStages / stages.length) * 100);
-
-  const { error } = await supabase
-    .from('projects')
-    .update({
-      stages: stages,
-      progress: progress,
-      status: progress === 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started',
-    })
-    .eq('id', projectId);
-
-  if (error) {
-    console.error('Error updating project progress:', error);
-    throw error;
-  }
-
-  sendLocalNotification(
-    'Project Progress Updated! 🏗️',
-    `Your project is now ${progress}% complete`,
-    '/arctic-roofing-logo.png'
-  );
+  console.log('✅ Project fetched:', project.projectType);
+  return project;
 };
 
 export const updateProjectStages = async (
@@ -260,22 +241,7 @@ export const updateProjectStages = async (
 ): Promise<void> => {
   console.log('📝 Updating project stages:', projectId);
   console.log('📊 New stages:', stages);
-  
-  const { data: oldProject } = await supabase
-    .from('projects')
-    .select('stages')
-    .eq('id', projectId)
-    .single();
 
-  const oldStages = oldProject?.stages || [];
-  
-  const changedStages = stages.filter((newStage, index) => {
-    const oldStage = oldStages[index];
-    return oldStage && newStage.completed !== oldStage.completed;
-  });
-
-  console.log('🔄 Changed stages:', changedStages);
-  
   const completedStages = stages.filter((s) => s.completed).length;
   const progress = Math.round((completedStages / stages.length) * 100);
 
@@ -299,32 +265,8 @@ export const updateProjectStages = async (
     throw error;
   }
 
-  console.log('✅ Project stages updated successfully:', data);
+  console.log('✅ Project stages updated successfully');
   console.log('📊 Progress:', progress + '%');
-  
-  changedStages.forEach((stage) => {
-    if (stage.completed) {
-      sendLocalNotification(
-        'Stage Completed! ✅',
-        `${stage.name} has been completed`,
-        '/arctic-roofing-logo.png'
-      );
-    } else {
-      sendLocalNotification(
-        'Stage Updated 🔄',
-        `${stage.name} has been marked as incomplete`,
-        '/arctic-roofing-logo.png'
-      );
-    }
-  });
-
-  if (progress === 100) {
-    sendLocalNotification(
-      'Project Completed! 🎉',
-      'All stages have been completed!',
-      '/arctic-roofing-logo.png'
-    );
-  }
 };
 
 export const updateProjectStatus = async (
@@ -333,7 +275,7 @@ export const updateProjectStatus = async (
 ): Promise<void> => {
   const { error } = await supabase
     .from('projects')
-    .update({ status })
+    .update({ status, updated_at: new Date().toISOString() })
     .eq('id', projectId);
 
   if (error) {
@@ -341,14 +283,13 @@ export const updateProjectStatus = async (
     throw error;
   }
 
-  sendLocalNotification(
-    'Project Status Updated! 📋',
-    `Your project status is now: ${status}`,
-    '/arctic-roofing-logo.png'
-  );
+  console.log('✅ Project status updated to:', status);
 };
 
 export const deleteProject = async (projectId: string): Promise<void> => {
+  console.log('🗑️ Deleting project:', projectId);
+
+  // Delete project updates first
   const { error: updatesError } = await supabase
     .from('project_updates')
     .delete()
@@ -358,6 +299,7 @@ export const deleteProject = async (projectId: string): Promise<void> => {
     console.error('Error deleting project updates:', updatesError);
   }
 
+  // Delete homeowner account
   const { error: homeownerError } = await supabase
     .from('homeowners')
     .delete()
@@ -367,12 +309,18 @@ export const deleteProject = async (projectId: string): Promise<void> => {
     console.error('Error deleting homeowner:', homeownerError);
   }
 
-  const { error } = await supabase.from('projects').delete().eq('id', projectId);
+  // Delete project
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', projectId);
 
   if (error) {
     console.error('Error deleting project:', error);
     throw error;
   }
+
+  console.log('✅ Project deleted successfully');
 };
 
 export const updatePhotoGalleryUrl = async (
@@ -381,7 +329,10 @@ export const updatePhotoGalleryUrl = async (
 ): Promise<void> => {
   const { error } = await supabase
     .from('projects')
-    .update({ photo_gallery_url: photoGalleryUrl })
+    .update({ 
+      photo_gallery_url: photoGalleryUrl,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', projectId);
 
   if (error) {
@@ -389,11 +340,7 @@ export const updatePhotoGalleryUrl = async (
     throw error;
   }
 
-  sendLocalNotification(
-    'Photo Gallery Updated! 📸',
-    'New photos have been added to your project gallery',
-    '/arctic-roofing-logo.png'
-  );
+  console.log('✅ Photo gallery URL updated');
 };
 
 export const addProjectUpdate = async (
@@ -405,8 +352,8 @@ export const addProjectUpdate = async (
     photos?: string[];
   }
 ): Promise<void> => {
-  console.log('📝 Adding project update:', update);
-  
+  console.log('📝 Adding project update:', update.title);
+
   const { error } = await supabase
     .from('project_updates')
     .insert([
@@ -426,18 +373,14 @@ export const addProjectUpdate = async (
   }
 
   console.log('✅ Project update added successfully');
-
-  sendLocalNotification(
-    `New Update: ${update.title}`,
-    update.description,
-    '/arctic-roofing-logo.png'
-  );
 };
 
 export const uploadProjectPhoto = async (
   projectId: string,
   photoUrl: string
 ): Promise<void> => {
+  console.log('📷 Adding photo to project:', projectId);
+
   const { data: project, error: fetchError } = await supabase
     .from('projects')
     .select('photos')
@@ -453,7 +396,7 @@ export const uploadProjectPhoto = async (
 
   const { error: updateError } = await supabase
     .from('projects')
-    .update({ 
+    .update({
       photos: updatedPhotos,
       updated_at: new Date().toISOString(),
     })
@@ -465,12 +408,6 @@ export const uploadProjectPhoto = async (
   }
 
   console.log('✅ Photo added successfully');
-
-  sendLocalNotification(
-    'New Photo Added! 📷',
-    'A new photo has been added to your project',
-    '/arctic-roofing-logo.png'
-  );
 };
 
 export const getProjects = getAllProjects;

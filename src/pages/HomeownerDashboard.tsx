@@ -23,6 +23,9 @@ const HomeownerDashboard = () => {
   const [activeTab, setActiveTab] = React.useState(() => {
     return localStorage.getItem('homeowner-active-tab') || 'overview';
   });
+  
+  // FIXED: Move ref to component level
+  const previousProjectRef = React.useRef<any>(null);
 
   React.useEffect(() => {
     localStorage.setItem('homeowner-active-tab', activeTab);
@@ -106,6 +109,13 @@ const HomeownerDashboard = () => {
     gcTime: 0,
   });
 
+  // FIXED: Update ref when project changes
+  React.useEffect(() => {
+    if (project) {
+      previousProjectRef.current = project;
+    }
+  }, [project]);
+
   React.useEffect(() => {
     if (error) {
       console.error('❌ Error loading project:', error);
@@ -135,8 +145,6 @@ const HomeownerDashboard = () => {
     if (!currentHomeowner?.projectId) return;
 
     console.log('🔔 Setting up real-time subscription for:', currentHomeowner.projectId);
-
-    const previousProjectRef = React.useRef(project);
 
     const channel = supabase
       .channel('project-updates')
