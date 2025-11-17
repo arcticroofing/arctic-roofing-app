@@ -28,23 +28,51 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentHomeowner, setCurrentHomeownerState] = useState<Homeowner | null>(null);
-  const [currentManager, setCurrentManagerState] = useState<Manager | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [currentHomeowner, setCurrentHomeownerState] = useState<Homeowner | null>(() => {
+    // Initialize from localStorage immediately
+    return getCurrentHomeowner();
+  });
+  
+  const [currentManager, setCurrentManagerState] = useState<Manager | null>(() => {
+    // Initialize from localStorage immediately
+    return getCurrentManager();
+  });
+  
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Persist to localStorage whenever state changes
+  useEffect(() => {
+    if (currentHomeowner) {
+      setCurrentHomeowner(currentHomeowner);
+    }
+  }, [currentHomeowner]);
 
   useEffect(() => {
-    const homeowner = getCurrentHomeowner();
-    if (homeowner) {
-      setCurrentHomeownerState(homeowner);
+    if (currentManager) {
+      setCurrentManager(currentManager);
     }
+  }, [currentManager]);
 
-    const manager = getCurrentManager();
-    if (manager) {
-      setCurrentManagerState(manager);
-    }
-    
-    setIsLoading(false);
-  }, []);
+  // Keep checking localStorage every second (for PWA resume)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!currentHomeowner) {
+        const stored = getCurrentHomeowner();
+        if (stored) {
+          setCurrentHomeownerState(stored);
+        }
+      }
+      
+      if (!currentManager) {
+        const stored = getCurrentManager();
+        if (stored) {
+          setCurrentManagerState(stored);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentHomeowner, currentManager]);
 
   const loginHomeowner = async (email: string, password: string): Promise<boolean> => {
     const homeowner = await loginHomeownerService(email, password);
@@ -52,6 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (homeowner) {
       setCurrentHomeowner(homeowner);
       setCurrentHomeownerState(homeowner);
+      
+      // Force multiple writes to ensure persistence
+      setTimeout(() => setCurrentHomeowner(homeowner), 100);
+      setTimeout(() => setCurrentHomeowner(homeowner), 500);
+      
       return true;
     }
     
@@ -64,6 +97,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (manager) {
       setCurrentManager(manager);
       setCurrentManagerState(manager);
+      
+      // Force multiple writes to ensure persistence
+      setTimeout(() => setCurrentManager(manager), 100);
+      setTimeout(() => setCurrentManager(manager), 500);
+      
       return true;
     }
     

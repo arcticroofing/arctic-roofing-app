@@ -1,5 +1,5 @@
-const CACHE_NAME = 'arctic-roofing-v2';
-const urlsToCache = ['/', '/index.html'];
+const CACHE_NAME = 'arctic-roofing-v3';
+const urlsToCache = ['/', '/index.html', '/manifest.json'];
 
 // Install
 self.addEventListener('install', (event) => {
@@ -25,32 +25,61 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch
+// Fetch with network-first strategy
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((fetchResponse) => {
-        return caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, fetchResponse.clone());
-          return fetchResponse;
+    fetch(event.request)
+      .then((response) => {
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
         });
-      });
-    }).catch(() => {
-      return caches.match('/index.html');
-    })
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((response) => {
+          return response || caches.match('/index.html');
+        });
+      })
   );
 });
 
-/// Push notifications
+// Keep service worker alive
+let keepAliveInterval;
+
+self.addEventListener('activate', () => {
+  // Ping every 20 seconds to keep worker alive
+  keepAliveInterval = setInterval(() => {
+    self.clients.matchAll().then((clients) => {
+      clients.forEach((client) => {
+        client.postMessage({ type: 'KEEP_ALIVE' });
+      });
+    });
+  }, 20000);
+});
+
+// Message handler
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  if (event.data && event.data.type === 'KEEP_ALIVE_RESPONSE') {
+    // Client is alive
+  }
+});
+
+// Push notifications
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || 'Project Update';
   const options = {
     body: data.body || 'Your project has been updated',
-    icon: '/icon-192.png',  // ← Your icon
-    badge: '/icon-192.png', // ← Your icon
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     tag: data.tag || 'project-update',
-    requireInteraction: false,
+    requireInteraction: true,
+    vibrate: [200, 100, 200],
     data: data.url || '/',
   };
 
@@ -67,14 +96,14 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Background sync
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-projects') {
-    event.waitUntil(syncProjects());
+// Periodic background sync (for notifications)
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'check-updates') {
+    event.waitUntil(checkForUpdates());
   }
 });
 
-async function syncProjects() {
-  // Sync logic here
+async function checkForUpdates() {
+  // Check for project updates
   return Promise.resolve();
 }
