@@ -1,11 +1,10 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getProjectById } from '../services/projectService';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectStages } from '../components/ProjectStages';
 import { PhotoGallery } from '../components/PhotoGallery';
@@ -13,11 +12,13 @@ import { PhotoLightbox } from '../components/PhotoLightbox';
 import { useToast } from '@/hooks/use-toast';
 import { subscribeToPushNotifications } from '../services/notificationService';
 import { supabase } from '@/lib/supabase';
-import { Calendar, DollarSign, User, MapPin, FileText, TrendingUp, Image as ImageIcon, Bell as BellIcon, BellOff } from 'lucide-react';
+import { RealtimeDebug } from '../components/RealtimeDebug';
+import { Calendar, DollarSign, User, MapPin, FileText, TrendingUp, Image as ImageIcon, Bell as BellIcon, BellOff, RefreshCw } from 'lucide-react';
 
 const HomeownerDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { currentHomeowner, isHomeownerAuthenticated } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
 
@@ -35,17 +36,70 @@ const HomeownerDashboard = () => {
   }, []);
 
   const { data: project, isLoading, refetch, error } = useQuery({
-    queryKey: ['project', currentHomeowner?.projectId],
-    queryFn: () => {
-      console.log('🔍 Fetching project for homeowner:', currentHomeowner);
-      console.log('📋 Project ID:', currentHomeowner?.projectId);
-      return getProjectById(currentHomeowner!.projectId);
+    queryKey: ['homeowner-project', currentHomeowner?.projectId],
+    queryFn: async () => {
+      console.log('🔍 Fetching project for homeowner:', currentHomeowner?.projectId);
+      
+      // Fetch directly from Supabase, bypassing any cache
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', currentHomeowner!.projectId)
+        .single();
+
+      if (error) {
+        console.error('❌ Error fetching project:', error);
+        throw error;
+      }
+
+      // Fetch updates
+      const { data: updatesData } = await supabase
+        .from('project_updates')
+        .select('*')
+        .eq('project_id', currentHomeowner!.projectId)
+        .order('date', { ascending: false });
+
+      const project = {
+        id: data.id,
+        homeownerName: data.homeowner_name,
+        homeownerEmail: data.homeowner_email,
+        address: data.address,
+        projectType: data.project_type,
+        status: data.status,
+        startDate: data.start_date,
+        estimatedCompletion: data.estimated_completion,
+        projectManager: data.project_manager,
+        budget: data.budget,
+        scope: data.scope,
+        progress: data.progress,
+        photos: data.photos || [],
+        stages: data.stages || [],
+        updates: (updatesData || []).map((update) => ({
+          id: update.id,
+          date: update.date,
+          title: update.title,
+          description: update.description,
+          author: update.author,
+          photos: update.photos || [],
+        })),
+        photoGalleryUrl: data.photo_gallery_url,
+        shingleSelection: data.shingle_selection,
+        gutterColor: data.gutter_color,
+        gutterSize: data.gutter_size,
+      };
+
+      console.log('📦 Fetched project:', project);
+      console.log('📊 Stages from database:', project.stages);
+      
+      return project;
     },
     enabled: !!currentHomeowner?.projectId,
-    refetchInterval: 10000,
+    refetchInterval: 2000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   React.useEffect(() => {
@@ -53,7 +107,8 @@ const HomeownerDashboard = () => {
       console.error('❌ Error loading project:', error);
     }
     if (project) {
-      console.log('✅ Project loaded successfully:', project);
+      console.log('✅ Project loaded successfully');
+      console.log('📊 Current stages:', project.stages);
     }
   }, [error, project]);
 
@@ -61,6 +116,7 @@ const HomeownerDashboard = () => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log('👁️ Tab became visible, refreshing project data...');
+        queryClient.removeQueries({ queryKey: ['homeowner-project'] });
         refetch();
       }
     };
@@ -70,65 +126,57 @@ const HomeownerDashboard = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refetch]);
+  }, [refetch, queryClient]);
 
   React.useEffect(() => {
     if (!currentHomeowner?.projectId) return;
 
-    console.log('🔔 Setting up real-time subscription for project:', currentHomeowner.projectId);
+    console.log('🔔 Setting up real-time subscription for:', currentHomeowner.projectId);
 
-    const projectChannel = supabase
-      .channel(`project-${currentHomeowner.projectId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'projects',
-          filter: `id=eq.${currentHomeowner.projectId}`,
-        },
+    const channel = supabase
+      .channel('project-updates')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'projects' },
         (payload) => {
-          console.log('🔄 Project updated in real-time:', payload);
-          refetch();
+          console.log('🔄 REALTIME EVENT RECEIVED:', payload);
+          const changed = payload.new as any;
           
-          if (payload.eventType === 'UPDATE') {
-            toast({
-              title: "Project Updated! 🔄",
-              description: "Your project has been updated. Check the latest changes!",
+          if (changed?.id === currentHomeowner.projectId) {
+            console.log('✅ OUR PROJECT WAS UPDATED!');
+            console.log('🔄 Clearing cache and forcing refetch...');
+            
+            queryClient.removeQueries({ queryKey: ['homeowner-project'] });
+            
+            setTimeout(() => {
+              refetch().then(() => {
+                console.log('✅ Refetch completed');
+              });
+            }, 100);
+            
+            toast({ 
+              title: "Project Updated! 🔄", 
+              description: "Your project has been updated.",
+              duration: 5000,
             });
+            
+            if (Notification.permission === 'granted') {
+              new Notification('Project Updated!', { 
+                body: 'Check the latest changes',
+                icon: '/arctic-roofing-logo.png',
+              });
+            }
           }
         }
       )
-      .subscribe();
-
-    const updatesChannel = supabase
-      .channel(`updates-${currentHomeowner.projectId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_updates',
-          filter: `project_id=eq.${currentHomeowner.projectId}`,
-        },
-        (payload) => {
-          console.log('📢 New update added in real-time:', payload);
-          refetch();
-          
-          toast({
-            title: "New Update! 📢",
-            description: "A new project update has been posted.",
-          });
-        }
-      )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Subscription status:', status);
+      });
 
     return () => {
-      console.log('🧹 Cleaning up real-time subscriptions');
-      supabase.removeChannel(projectChannel);
-      supabase.removeChannel(updatesChannel);
+      console.log('🧹 Unsubscribing from realtime');
+      channel.unsubscribe();
     };
-  }, [currentHomeowner?.projectId, refetch, toast]);
+  }, [currentHomeowner?.projectId, refetch, toast, queryClient]);
 
   const statusColors = {
     'Not Started': 'bg-gray-500',
@@ -154,6 +202,20 @@ const HomeownerDashboard = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleManualRefresh = async () => {
+    console.log('🔄 Manual refresh clicked');
+    
+    queryClient.removeQueries({ queryKey: ['homeowner-project'] });
+    
+    const result = await refetch();
+    console.log('✅ Refetch result:', result);
+    
+    toast({
+      title: "Refreshed!",
+      description: "Latest project data loaded",
+    });
   };
 
   if (!isHomeownerAuthenticated) {
@@ -201,7 +263,7 @@ const HomeownerDashboard = () => {
 
   return (
     <div className="flex flex-col h-full w-full bg-black">
-      <header className="flex items-center justify-between sticky top-0 z-10 gap-2 sm:gap-4 border-b border-[#96D7FE]/20 bg-black px-3 sm:px-6 py-3 sm:py-4 shadow-lg shadow-[#96D7FE]/5">
+      <header className="flex items-center justify-between sticky top-0 z-10 gap-2 border-b border-[#96D7FE]/20 bg-black px-3 sm:px-6 py-3 sm:py-4 shadow-lg shadow-[#96D7FE]/5">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
           <SidebarTrigger className="text-[#96D7FE]" />
           <div className="flex-1 min-w-0">
@@ -213,6 +275,17 @@ const HomeownerDashboard = () => {
             </p>
           </div>
         </div>
+        
+        <Button
+          onClick={handleManualRefresh}
+          variant="outline"
+          size="sm"
+          className="border-green-500/30 text-green-500 hover:bg-green-500/10 flex-shrink-0"
+        >
+          <RefreshCw size={18} />
+          <span className="hidden sm:inline ml-2">Refresh</span>
+        </Button>
+        
         <Button
           onClick={handleEnableNotifications}
           variant="outline"
@@ -281,6 +354,8 @@ const HomeownerDashboard = () => {
               )}
             </div>
           </div>
+
+          <RealtimeDebug projectId={project.id} />
 
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-900 border-2 border-[#96D7FE]/40 h-auto p-1 rounded-xl shadow-lg shadow-[#96D7FE]/10">

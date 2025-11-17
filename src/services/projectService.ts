@@ -247,7 +247,6 @@ export const updateProjectProgress = async (
     throw error;
   }
 
-  // Send notification to homeowner
   sendLocalNotification(
     'Project Progress Updated! 🏗️',
     `Your project is now ${progress}% complete`,
@@ -259,6 +258,8 @@ export const updateProjectStages = async (
   projectId: string,
   stages: ProjectStage[]
 ): Promise<void> => {
+  console.log('📝 Updating project stages:', projectId);
+  
   const completedStages = stages.filter((s) => s.completed).length;
   const progress = Math.round((completedStages / stages.length) * 100);
 
@@ -268,15 +269,18 @@ export const updateProjectStages = async (
       stages: stages,
       progress: progress,
       status: progress === 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started',
+      updated_at: new Date().toISOString(),
     })
     .eq('id', projectId);
 
   if (error) {
-    console.error('Error updating project stages:', error);
+    console.error('❌ Error updating project stages:', error);
     throw error;
   }
 
-  // Send notification to homeowner
+  console.log('✅ Project stages updated successfully');
+  console.log('📊 Progress:', progress + '%');
+  
   const lastCompletedStage = stages.filter(s => s.completed).pop();
   if (lastCompletedStage) {
     sendLocalNotification(
@@ -301,7 +305,6 @@ export const updateProjectStatus = async (
     throw error;
   }
 
-  // Send notification to homeowner
   sendLocalNotification(
     'Project Status Updated! 📋',
     `Your project status is now: ${status}`,
@@ -350,7 +353,6 @@ export const updatePhotoGalleryUrl = async (
     throw error;
   }
 
-  // Send notification to homeowner
   sendLocalNotification(
     'Photo Gallery Updated! 📸',
     'New photos have been added to your project gallery',
@@ -385,7 +387,6 @@ export const addProjectUpdate = async (
     throw error;
   }
 
-  // Send notification to homeowner
   sendLocalNotification(
     'New Project Update! 📢',
     update.title,
@@ -397,7 +398,6 @@ export const uploadProjectPhoto = async (
   projectId: string,
   photoUrl: string
 ): Promise<void> => {
-  // Get current project
   const { data: project, error: fetchError } = await supabase
     .from('projects')
     .select('photos')
@@ -409,10 +409,8 @@ export const uploadProjectPhoto = async (
     throw fetchError;
   }
 
-  // Add new photo to array
   const updatedPhotos = [...(project.photos || []), photoUrl];
 
-  // Update project with new photos
   const { error: updateError } = await supabase
     .from('projects')
     .update({ photos: updatedPhotos })
@@ -423,7 +421,6 @@ export const uploadProjectPhoto = async (
     throw updateError;
   }
 
-  // Send notification to homeowner
   sendLocalNotification(
     'New Photo Added! 📷',
     'A new photo has been added to your project',
