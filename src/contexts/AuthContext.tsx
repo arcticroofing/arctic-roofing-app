@@ -1,177 +1,97 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
-  loginManager as loginManagerService, 
-  loginHomeowner as loginHomeownerService, 
-  logoutManager as logoutManagerService, 
-  logoutHomeowner as logoutHomeownerService,
-  type Manager, 
-  type Homeowner 
+  Homeowner, 
+  getCurrentHomeowner, 
+  setCurrentHomeowner, 
+  logoutHomeowner,
+  loginHomeowner as loginHomeownerService
 } from '../services/authService';
+import { 
+  Manager, 
+  getCurrentManager, 
+  setCurrentManager, 
+  logoutManager as logoutManagerService,
+  loginManager as loginManagerService
+} from '../services/managerAuthService';
 
 interface AuthContextType {
-  currentManager: Manager | null;
   currentHomeowner: Homeowner | null;
-  isManagerAuthenticated: boolean;
-  isHomeownerAuthenticated: boolean;
-  loginManager: (email: string, password: string) => Promise<boolean>;
+  currentManager: Manager | null;
   loginHomeowner: (email: string, password: string) => Promise<boolean>;
-  logoutManager: () => void;
+  loginManager: (email: string, password: string) => Promise<boolean>;
   logoutHomeowner: () => void;
+  logoutManager: () => void;
+  isHomeownerAuthenticated: boolean;
+  isManagerAuthenticated: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentManager, setCurrentManagerState] = useState<Manager | null>(null);
   const [currentHomeowner, setCurrentHomeownerState] = useState<Homeowner | null>(null);
-  const [isManagerAuthenticated, setIsManagerAuthenticated] = useState(false);
-  const [isHomeownerAuthenticated, setIsHomeownerAuthenticated] = useState(false);
+  const [currentManager, setCurrentManagerState] = useState<Manager | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const restoreSession = () => {
-      console.log('🔄 Attempting to restore session...');
-      
-      try {
-        // Check for manager session
-        const storedManager = localStorage.getItem('currentManager');
-        const managerExpiry = localStorage.getItem('managerExpiry');
-        
-        console.log('📦 Stored manager:', storedManager);
-        console.log('⏰ Manager expiry:', managerExpiry);
-        
-        if (storedManager && managerExpiry) {
-          const expiryTime = parseInt(managerExpiry);
-          const now = Date.now();
-          
-          console.log('🕐 Current time:', now);
-          console.log('🕐 Expiry time:', expiryTime);
-          console.log('⏳ Time until expiry:', (expiryTime - now) / 1000 / 60 / 60 / 24, 'days');
-          
-          if (now < expiryTime) {
-            const manager = JSON.parse(storedManager);
-            console.log('✅ Manager session restored:', manager);
-            setCurrentManagerState(manager);
-            setIsManagerAuthenticated(true);
-          } else {
-            console.log('⏰ Manager session expired');
-            localStorage.removeItem('currentManager');
-            localStorage.removeItem('managerExpiry');
-          }
-        } else {
-          console.log('❌ No manager session found');
-        }
-
-        // Check for homeowner session
-        const storedHomeowner = localStorage.getItem('currentHomeowner');
-        const homeownerExpiry = localStorage.getItem('homeownerExpiry');
-        
-        console.log('📦 Stored homeowner:', storedHomeowner);
-        console.log('⏰ Homeowner expiry:', homeownerExpiry);
-        
-        if (storedHomeowner && homeownerExpiry) {
-          const expiryTime = parseInt(homeownerExpiry);
-          const now = Date.now();
-          
-          console.log('🕐 Current time:', now);
-          console.log('🕐 Expiry time:', expiryTime);
-          console.log('⏳ Time until expiry:', (expiryTime - now) / 1000 / 60 / 60 / 24, 'days');
-          
-          if (now < expiryTime) {
-            const homeowner = JSON.parse(storedHomeowner);
-            console.log('✅ Homeowner session restored:', homeowner);
-            console.log('📋 Project ID:', homeowner.projectId);
-            
-            if (!homeowner.projectId) {
-              console.error('❌ Homeowner missing projectId, clearing session');
-              localStorage.removeItem('currentHomeowner');
-              localStorage.removeItem('homeownerExpiry');
-            } else {
-              setCurrentHomeownerState(homeowner);
-              setIsHomeownerAuthenticated(true);
-            }
-          } else {
-            console.log('⏰ Homeowner session expired');
-            localStorage.removeItem('currentHomeowner');
-            localStorage.removeItem('homeownerExpiry');
-          }
-        } else {
-          console.log('❌ No homeowner session found');
-        }
-      } catch (e) {
-        console.error('❌ Error restoring session:', e);
-        localStorage.removeItem('currentManager');
-        localStorage.removeItem('currentHomeowner');
-        localStorage.removeItem('managerExpiry');
-        localStorage.removeItem('homeownerExpiry');
-      } finally {
-        setIsLoading(false);
-        console.log('✅ Session restore complete');
-      }
-    };
-
-    restoreSession();
-  }, []);
-
-  const loginManager = async (email: string, password: string): Promise<boolean> => {
-    console.log('🔐 Manager login attempt:', email);
-    const manager = await loginManagerService(email, password);
-    if (manager) {
-      setCurrentManagerState(manager);
-      setIsManagerAuthenticated(true);
-      
-      const expiryTime = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
-      localStorage.setItem('managerExpiry', expiryTime.toString());
-      
-      console.log('✅ Manager logged in successfully');
-      console.log('⏰ Session expires:', new Date(expiryTime).toLocaleString());
-      return true;
+    console.log('🔄 Restoring sessions from localStorage...');
+    
+    const homeowner = getCurrentHomeowner();
+    if (homeowner) {
+      console.log('✅ Homeowner session restored:', homeowner.name);
+      setCurrentHomeownerState(homeowner);
     }
-    console.log('❌ Manager login failed');
-    return false;
-  };
+
+    const manager = getCurrentManager();
+    if (manager) {
+      console.log('✅ Manager session restored:', manager.name);
+      setCurrentManagerState(manager);
+    }
+    
+    setIsLoading(false);
+  }, []);
 
   const loginHomeowner = async (email: string, password: string): Promise<boolean> => {
     console.log('🔐 Homeowner login attempt:', email);
+    
     const homeowner = await loginHomeownerService(email, password);
     
     if (homeowner) {
-      console.log('✅ Homeowner data received:', homeowner);
-      console.log('📋 Project ID:', homeowner.projectId);
-      
-      if (!homeowner.projectId) {
-        console.error('❌ Homeowner missing projectId!');
-        return false;
-      }
-      
+      setCurrentHomeowner(homeowner);
       setCurrentHomeownerState(homeowner);
-      setIsHomeownerAuthenticated(true);
-      
-      const expiryTime = Date.now() + (90 * 24 * 60 * 60 * 1000); // 90 days
-      localStorage.setItem('homeownerExpiry', expiryTime.toString());
-      
       console.log('✅ Homeowner logged in successfully');
-      console.log('⏰ Session expires:', new Date(expiryTime).toLocaleString());
       return true;
     }
+    
     console.log('❌ Homeowner login failed');
     return false;
   };
 
-  const logoutManager = () => {
+  const loginManager = async (email: string, password: string): Promise<boolean> => {
+    console.log('🔐 Manager login attempt:', email);
+    
+    const manager = await loginManagerService(email, password);
+    
+    if (manager) {
+      setCurrentManager(manager);
+      setCurrentManagerState(manager);
+      console.log('✅ Manager logged in successfully');
+      return true;
+    }
+    
+    console.log('❌ Manager login failed');
+    return false;
+  };
+
+  const logoutHomeownerHandler = () => {
+    console.log('👋 Homeowner logging out');
+    logoutHomeowner();
+    setCurrentHomeownerState(null);
+  };
+
+  const logoutManagerHandler = () => {
     console.log('👋 Manager logging out');
     logoutManagerService();
     setCurrentManagerState(null);
-    setIsManagerAuthenticated(false);
-    localStorage.removeItem('managerExpiry');
-  };
-
-  const logoutHomeowner = () => {
-    console.log('👋 Homeowner logging out');
-    logoutHomeownerService();
-    setCurrentHomeownerState(null);
-    setIsHomeownerAuthenticated(false);
-    localStorage.removeItem('homeownerExpiry');
   };
 
   if (isLoading) {
@@ -186,18 +106,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        currentManager,
-        currentHomeowner,
-        isManagerAuthenticated,
-        isHomeownerAuthenticated,
-        loginManager,
-        loginHomeowner,
-        logoutManager,
-        logoutHomeowner,
-      }}
-    >
+    <AuthContext.Provider value={{
+      currentHomeowner,
+      currentManager,
+      loginHomeowner,
+      loginManager,
+      logoutHomeowner: logoutHomeownerHandler,
+      logoutManager: logoutManagerHandler,
+      isHomeownerAuthenticated: !!currentHomeowner,
+      isManagerAuthenticated: !!currentManager
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -205,8 +123,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };
