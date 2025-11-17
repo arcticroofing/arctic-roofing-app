@@ -19,27 +19,42 @@ export const loginManager = async (
 ): Promise<Manager | null> => {
   console.log('🔍 Attempting manager login for:', email);
   
-  const { data, error } = await supabase
-    .from('managers')
-    .select('*')
-    .eq('email', email)
-    .eq('password', password)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('managers')
+      .select('*')
+      .eq('email', email)
+      .single();
 
-  if (error || !data) {
-    console.error('❌ Manager login failed:', error);
+    if (error) {
+      console.error('❌ Manager query error:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.log('❌ No manager found with email:', email);
+      return null;
+    }
+
+    // Check password
+    if (data.password !== password) {
+      console.log('❌ Invalid password for manager');
+      return null;
+    }
+
+    const manager: Manager = {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+    };
+
+    console.log('✅ Manager login successful:', manager);
+    localStorage.setItem('currentManager', JSON.stringify(manager));
+    return manager;
+  } catch (err) {
+    console.error('❌ Manager login exception:', err);
     return null;
   }
-
-  const manager: Manager = {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-  };
-
-  console.log('✅ Manager login successful:', manager);
-  localStorage.setItem('currentManager', JSON.stringify(manager));
-  return manager;
 };
 
 export const loginHomeowner = async (
@@ -48,35 +63,50 @@ export const loginHomeowner = async (
 ): Promise<Homeowner | null> => {
   console.log('🔍 Attempting homeowner login for:', email);
   
-  const { data, error } = await supabase
-    .from('homeowners')
-    .select('*')
-    .eq('email', email)
-    .eq('password', password)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('homeowners')
+      .select('*')
+      .eq('email', email)
+      .single();
 
-  if (error || !data) {
-    console.error('❌ Homeowner login failed:', error);
+    if (error) {
+      console.error('❌ Homeowner query error:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.log('❌ No homeowner found with email:', email);
+      return null;
+    }
+
+    // Check password
+    if (data.password !== password) {
+      console.log('❌ Invalid password for homeowner');
+      return null;
+    }
+
+    const homeowner: Homeowner = {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      projectId: data.project_id,
+    };
+
+    console.log('✅ Homeowner login successful:', homeowner);
+    console.log('📋 Project ID from database:', data.project_id);
+    console.log('📋 Project ID in object:', homeowner.projectId);
+
+    if (!homeowner.projectId) {
+      console.error('❌ WARNING: Homeowner has no project_id in database!');
+    }
+
+    localStorage.setItem('currentHomeowner', JSON.stringify(homeowner));
+    return homeowner;
+  } catch (err) {
+    console.error('❌ Homeowner login exception:', err);
     return null;
   }
-
-  const homeowner: Homeowner = {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-    projectId: data.project_id,
-  };
-
-  console.log('✅ Homeowner login successful:', homeowner);
-  console.log('📋 Project ID from database:', data.project_id);
-  console.log('📋 Project ID in object:', homeowner.projectId);
-
-  if (!homeowner.projectId) {
-    console.error('❌ WARNING: Homeowner has no project_id in database!');
-  }
-
-  localStorage.setItem('currentHomeowner', JSON.stringify(homeowner));
-  return homeowner;
 };
 
 export const logoutManager = () => {
