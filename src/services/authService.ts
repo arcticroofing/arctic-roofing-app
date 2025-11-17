@@ -11,7 +11,6 @@ export const loginHomeowner = async (email: string, password: string): Promise<H
   try {
     console.log('🔐 Attempting homeowner login:', email);
 
-    // Query homeowners table with password_hash
     const { data, error } = await supabase
       .from('homeowners')
       .select('*')
@@ -44,7 +43,6 @@ export const createHomeownerAccount = async (
   email: string,
   projectId: string
 ): Promise<{ homeowner: Homeowner; temporaryPassword: string }> => {
-  // Generate a secure temporary password
   const temporaryPassword = `Arctic${Math.floor(1000 + Math.random() * 9000)}`;
 
   const { data, error } = await supabase
@@ -83,8 +81,7 @@ export const getCurrentHomeowner = (): Homeowner | null => {
   const stored = localStorage.getItem('currentHomeowner');
   const expiry = localStorage.getItem('homeownerExpiry');
   const version = localStorage.getItem('sessionVersion');
-  
-  // Clear old sessions (before Supabase migration)
+
   if (!version || version !== '2.0') {
     console.log('🧹 Clearing old session format');
     localStorage.removeItem('currentHomeowner');
@@ -92,38 +89,26 @@ export const getCurrentHomeowner = (): Homeowner | null => {
     localStorage.setItem('sessionVersion', '2.0');
     return null;
   }
-  
+
   if (!stored || !expiry) return null;
-  
-  // Check if session expired
+
   const expiryTime = parseInt(expiry);
   const now = Date.now();
-  
+
   if (now > expiryTime) {
     console.log('⏰ Homeowner session expired');
     localStorage.removeItem('currentHomeowner');
     localStorage.removeItem('homeownerExpiry');
     return null;
   }
-  
+
   return JSON.parse(stored);
 };
 
 export const setCurrentHomeowner = (homeowner: Homeowner): void => {
   localStorage.setItem('currentHomeowner', JSON.stringify(homeowner));
   localStorage.setItem('sessionVersion', '2.0');
-  
-  // Set expiry to 90 days from now
-  const expiryTime = Date.now() + (90 * 24 * 60 * 60 * 1000);
-  localStorage.setItem('homeownerExpiry', expiryTime.toString());
-  
-  console.log('✅ Homeowner session saved (expires in 90 days)');
-};
 
-export const setCurrentHomeowner = (homeowner: Homeowner): void => {
-  localStorage.setItem('currentHomeowner', JSON.stringify(homeowner));
-
-  // Set expiry to 90 days from now
   const expiryTime = Date.now() + (90 * 24 * 60 * 60 * 1000);
   localStorage.setItem('homeownerExpiry', expiryTime.toString());
 
