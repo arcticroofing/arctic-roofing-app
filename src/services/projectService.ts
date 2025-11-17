@@ -259,33 +259,69 @@ export const updateProjectStages = async (
   stages: ProjectStage[]
 ): Promise<void> => {
   console.log('📝 Updating project stages:', projectId);
+  console.log('📊 New stages:', stages);
+  
+  const { data: oldProject } = await supabase
+    .from('projects')
+    .select('stages')
+    .eq('id', projectId)
+    .single();
+
+  const oldStages = oldProject?.stages || [];
+  
+  const changedStages = stages.filter((newStage, index) => {
+    const oldStage = oldStages[index];
+    return oldStage && newStage.completed !== oldStage.completed;
+  });
+
+  console.log('🔄 Changed stages:', changedStages);
   
   const completedStages = stages.filter((s) => s.completed).length;
   const progress = Math.round((completedStages / stages.length) * 100);
 
-  const { error } = await supabase
+  const updateData = {
+    stages: stages,
+    progress: progress,
+    status: progress === 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started',
+    updated_at: new Date().toISOString(),
+  };
+
+  console.log('📤 Sending update to Supabase:', updateData);
+
+  const { data, error } = await supabase
     .from('projects')
-    .update({
-      stages: stages,
-      progress: progress,
-      status: progress === 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', projectId);
+    .update(updateData)
+    .eq('id', projectId)
+    .select();
 
   if (error) {
     console.error('❌ Error updating project stages:', error);
     throw error;
   }
 
-  console.log('✅ Project stages updated successfully');
+  console.log('✅ Project stages updated successfully:', data);
   console.log('📊 Progress:', progress + '%');
   
-  const lastCompletedStage = stages.filter(s => s.completed).pop();
-  if (lastCompletedStage) {
+  changedStages.forEach((stage) => {
+    if (stage.completed) {
+      sendLocalNotification(
+        'Stage Completed! ✅',
+        `${stage.name} has been completed`,
+        '/arctic-roofing-logo.png'
+      );
+    } else {
+      sendLocalNotification(
+        'Stage Updated 🔄',
+        `${stage.name} has been marked as incomplete`,
+        '/arctic-roofing-logo.png'
+      );
+    }
+  });
+
+  if (progress === 100) {
     sendLocalNotification(
-      'Stage Completed! ✅',
-      `${lastCompletedStage.name} is now complete`,
+      'Project Completed! 🎉',
+      'All stages have been completed!',
       '/arctic-roofing-logo.png'
     );
   }
@@ -369,6 +405,8 @@ export const addProjectUpdate = async (
     photos?: string[];
   }
 ): Promise<void> => {
+  console.log('📝 Adding project update:', update);
+  
   const { error } = await supabase
     .from('project_updates')
     .insert([
@@ -387,9 +425,11 @@ export const addProjectUpdate = async (
     throw error;
   }
 
+  console.log('✅ Project update added successfully');
+
   sendLocalNotification(
-    'New Project Update! 📢',
-    update.title,
+    `New Update: ${update.title}`,
+    update.description,
     '/arctic-roofing-logo.png'
   );
 };
@@ -413,13 +453,18 @@ export const uploadProjectPhoto = async (
 
   const { error: updateError } = await supabase
     .from('projects')
-    .update({ photos: updatedPhotos })
+    .update({ 
+      photos: updatedPhotos,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', projectId);
 
   if (updateError) {
     console.error('Error updating project photos:', updateError);
     throw updateError;
   }
+
+  console.log('✅ Photo added successfully');
 
   sendLocalNotification(
     'New Photo Added! 📷',

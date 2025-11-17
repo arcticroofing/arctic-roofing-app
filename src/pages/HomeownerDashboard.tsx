@@ -136,6 +136,8 @@ const HomeownerDashboard = () => {
 
     console.log('🔔 Setting up real-time subscription for:', currentHomeowner.projectId);
 
+    const previousProjectRef = React.useRef(project);
+
     const channel = supabase
       .channel('project-updates')
       .on('postgres_changes', 
@@ -146,6 +148,54 @@ const HomeownerDashboard = () => {
           
           if (changed?.id === currentHomeowner.projectId) {
             console.log('✅ OUR PROJECT WAS UPDATED!');
+            
+            const oldProject = previousProjectRef.current;
+            let notificationTitle = "Project Updated! 🔄";
+            let notificationBody = "Your project has been updated.";
+            
+            // Check for stage changes
+            const oldStages = oldProject?.stages || [];
+            const newStages = changed.stages || [];
+            
+            const changedStages = newStages.filter((newStage: any, index: number) => {
+              const oldStage = oldStages[index];
+              return oldStage && newStage.completed !== oldStage.completed;
+            });
+
+            if (changedStages.length > 0) {
+              const stage = changedStages[0];
+              if (stage.completed) {
+                notificationTitle = "Stage Completed! ✅";
+                notificationBody = `${stage.name} has been completed`;
+              } else {
+                notificationTitle = "Stage Updated 🔄";
+                notificationBody = `${stage.name} has been marked as incomplete`;
+              }
+              
+              if (changedStages.length > 1) {
+                notificationBody += ` and ${changedStages.length - 1} other stage(s)`;
+              }
+            }
+            
+            // Check for photo changes
+            const oldPhotos = oldProject?.photos || [];
+            const newPhotos = changed.photos || [];
+            
+            if (newPhotos.length > oldPhotos.length) {
+              const photosAdded = newPhotos.length - oldPhotos.length;
+              notificationTitle = "New Photo Added! 📷";
+              notificationBody = photosAdded === 1 
+                ? "A new photo has been added to your project"
+                : `${photosAdded} new photos have been added to your project`;
+            }
+            
+            // Check if project completed
+            const completedCount = newStages.filter((s: any) => s.completed).length;
+            if (completedCount === newStages.length && newStages.length > 0) {
+              notificationTitle = "Project Completed! 🎉";
+              notificationBody = "All stages have been completed!";
+            }
+            
             console.log('🔄 Clearing cache and forcing refetch...');
             
             queryClient.removeQueries({ queryKey: ['homeowner-project'] });
@@ -157,15 +207,52 @@ const HomeownerDashboard = () => {
             }, 100);
             
             toast({ 
-              title: "Project Updated! 🔄", 
-              description: "Your project has been updated.",
+              title: notificationTitle, 
+              description: notificationBody,
               duration: 5000,
             });
             
             if (Notification.permission === 'granted') {
-              new Notification('Project Updated!', { 
-                body: 'Check the latest changes',
+              new Notification(notificationTitle, { 
+                body: notificationBody,
                 icon: '/arctic-roofing-logo.png',
+                tag: 'project-update',
+              });
+            }
+          }
+        }
+      )
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'project_updates' },
+        (payload) => {
+          console.log('📢 NEW UPDATE RECEIVED:', payload);
+          const newUpdate = payload.new as any;
+          
+          if (newUpdate.project_id === currentHomeowner.projectId) {
+            console.log('✅ New update for our project!');
+            
+            const notificationTitle = `New Update: ${newUpdate.title}`;
+            const notificationBody = newUpdate.description;
+            
+            queryClient.removeQueries({ queryKey: ['homeowner-project'] });
+            
+            setTimeout(() => {
+              refetch().then(() => {
+                console.log('✅ Refetch completed');
+              });
+            }, 100);
+            
+            toast({ 
+              title: notificationTitle, 
+              description: notificationBody,
+              duration: 5000,
+            });
+            
+            if (Notification.permission === 'granted') {
+              new Notification(notificationTitle, { 
+                body: notificationBody,
+                icon: '/arctic-roofing-logo.png',
+                tag: 'project-update',
               });
             }
           }
@@ -179,7 +266,7 @@ const HomeownerDashboard = () => {
       console.log('🧹 Unsubscribing from realtime');
       channel.unsubscribe();
     };
-  }, [currentHomeowner?.projectId, refetch, toast, queryClient]);
+  }, [currentHomeowner?.projectId, project, refetch, toast, queryClient]);
 
   const statusColors = {
     'Not Started': 'bg-gray-500',
