@@ -33,17 +33,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    console.log('🔄 Restoring sessions from localStorage...');
-    
     const homeowner = getCurrentHomeowner();
     if (homeowner) {
-      console.log('✅ Homeowner session restored:', homeowner.name);
       setCurrentHomeownerState(homeowner);
     }
 
     const manager = getCurrentManager();
     if (manager) {
-      console.log('✅ Manager session restored:', manager.name);
       setCurrentManagerState(manager);
     }
     
@@ -51,45 +47,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginHomeowner = async (email: string, password: string): Promise<boolean> => {
-    console.log('🔐 Homeowner login attempt:', email);
-    
     const homeowner = await loginHomeownerService(email, password);
     
     if (homeowner) {
       setCurrentHomeowner(homeowner);
       setCurrentHomeownerState(homeowner);
-      console.log('✅ Homeowner logged in successfully');
       return true;
     }
     
-    console.log('❌ Homeowner login failed');
     return false;
   };
 
   const loginManager = async (email: string, password: string): Promise<boolean> => {
-    console.log('🔐 Manager login attempt:', email);
-    
     const manager = await loginManagerService(email, password);
     
     if (manager) {
       setCurrentManager(manager);
       setCurrentManagerState(manager);
-      console.log('✅ Manager logged in successfully');
       return true;
     }
     
-    console.log('❌ Manager login failed');
     return false;
   };
 
   const logoutHomeownerHandler = () => {
-    console.log('👋 Homeowner logging out');
     logoutHomeowner();
     setCurrentHomeownerState(null);
   };
 
   const logoutManagerHandler = () => {
-    console.log('👋 Manager logging out');
     logoutManagerService();
     setCurrentManagerState(null);
   };
