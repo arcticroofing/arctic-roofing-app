@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { createHomeownerAccount } from './authService';
+import { sendLocalNotification } from './notificationService';
 
 export interface ProjectStage {
   id: string;
@@ -245,6 +246,13 @@ export const updateProjectProgress = async (
     console.error('Error updating project progress:', error);
     throw error;
   }
+
+  // Send notification to homeowner
+  sendLocalNotification(
+    'Project Progress Updated! 🏗️',
+    `Your project is now ${progress}% complete`,
+    '/arctic-roofing-logo.png'
+  );
 };
 
 export const updateProjectStages = async (
@@ -267,6 +275,16 @@ export const updateProjectStages = async (
     console.error('Error updating project stages:', error);
     throw error;
   }
+
+  // Send notification to homeowner
+  const lastCompletedStage = stages.filter(s => s.completed).pop();
+  if (lastCompletedStage) {
+    sendLocalNotification(
+      'Stage Completed! ✅',
+      `${lastCompletedStage.name} is now complete`,
+      '/arctic-roofing-logo.png'
+    );
+  }
 };
 
 export const updateProjectStatus = async (
@@ -282,6 +300,13 @@ export const updateProjectStatus = async (
     console.error('Error updating project status:', error);
     throw error;
   }
+
+  // Send notification to homeowner
+  sendLocalNotification(
+    'Project Status Updated! 📋',
+    `Your project status is now: ${status}`,
+    '/arctic-roofing-logo.png'
+  );
 };
 
 export const deleteProject = async (projectId: string): Promise<void> => {
@@ -324,6 +349,13 @@ export const updatePhotoGalleryUrl = async (
     console.error('Error updating photo gallery URL:', error);
     throw error;
   }
+
+  // Send notification to homeowner
+  sendLocalNotification(
+    'Photo Gallery Updated! 📸',
+    'New photos have been added to your project gallery',
+    '/arctic-roofing-logo.png'
+  );
 };
 
 export const addProjectUpdate = async (
@@ -352,6 +384,51 @@ export const addProjectUpdate = async (
     console.error('Error adding project update:', error);
     throw error;
   }
+
+  // Send notification to homeowner
+  sendLocalNotification(
+    'New Project Update! 📢',
+    update.title,
+    '/arctic-roofing-logo.png'
+  );
+};
+
+export const uploadProjectPhoto = async (
+  projectId: string,
+  photoUrl: string
+): Promise<void> => {
+  // Get current project
+  const { data: project, error: fetchError } = await supabase
+    .from('projects')
+    .select('photos')
+    .eq('id', projectId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching project:', fetchError);
+    throw fetchError;
+  }
+
+  // Add new photo to array
+  const updatedPhotos = [...(project.photos || []), photoUrl];
+
+  // Update project with new photos
+  const { error: updateError } = await supabase
+    .from('projects')
+    .update({ photos: updatedPhotos })
+    .eq('id', projectId);
+
+  if (updateError) {
+    console.error('Error updating project photos:', updateError);
+    throw updateError;
+  }
+
+  // Send notification to homeowner
+  sendLocalNotification(
+    'New Photo Added! 📷',
+    'A new photo has been added to your project',
+    '/arctic-roofing-logo.png'
+  );
 };
 
 export const getProjects = getAllProjects;

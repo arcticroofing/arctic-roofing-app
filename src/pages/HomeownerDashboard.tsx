@@ -10,17 +10,27 @@ import { useAuth } from '../contexts/AuthContext';
 import { ProjectStages } from '../components/ProjectStages';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { PhotoLightbox } from '../components/PhotoLightbox';
-import { Calendar, DollarSign, User, MapPin, Eye, FileText, TrendingUp, Image as ImageIcon, Bell } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { subscribeToPushNotifications } from '../services/notificationService';
+import { Calendar, DollarSign, User, MapPin, FileText, TrendingUp, Image as ImageIcon, Bell as BellIcon, BellOff } from 'lucide-react';
 
 const HomeownerDashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { currentHomeowner, isHomeownerAuthenticated } = useAuth();
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
 
   React.useEffect(() => {
     if (!isHomeownerAuthenticated) {
       navigate('/homeowner/login');
     }
   }, [isHomeownerAuthenticated, navigate]);
+
+  React.useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+  }, []);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', currentHomeowner?.projectId],
@@ -33,6 +43,25 @@ const HomeownerDashboard = () => {
     'In Progress': 'bg-[#96D7FE]',
     'Completed': 'bg-green-500',
     'On Hold': 'bg-yellow-500'
+  };
+
+  const handleEnableNotifications = async () => {
+    if (!currentHomeowner) return;
+    
+    const success = await subscribeToPushNotifications(currentHomeowner.id);
+    if (success) {
+      setNotificationsEnabled(true);
+      toast({
+        title: "Notifications Enabled! 🔔",
+        description: "You'll receive updates about your project.",
+      });
+    } else {
+      toast({
+        title: "Notifications Blocked",
+        description: "Please enable notifications in your browser settings.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (!isHomeownerAuthenticated) {
@@ -72,16 +101,29 @@ const HomeownerDashboard = () => {
 
   return (
     <div className="flex flex-col h-full w-full bg-black">
-      <header className="flex items-center sticky top-0 z-10 gap-2 sm:gap-4 border-b border-[#96D7FE]/20 bg-black px-3 sm:px-6 py-3 sm:py-4 shadow-lg shadow-[#96D7FE]/5">
-        <SidebarTrigger className="text-[#96D7FE]" />
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg sm:text-2xl font-semibold text-white truncate">
-            Welcome, {currentHomeowner?.name}!
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-400 hidden sm:block">
-            Track your roofing project progress
-          </p>
+      <header className="flex items-center justify-between sticky top-0 z-10 gap-2 sm:gap-4 border-b border-[#96D7FE]/20 bg-black px-3 sm:px-6 py-3 sm:py-4 shadow-lg shadow-[#96D7FE]/5">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+          <SidebarTrigger className="text-[#96D7FE]" />
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-2xl font-semibold text-white truncate">
+              Welcome, {currentHomeowner?.name}!
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-400 hidden sm:block">
+              Track your roofing project progress
+            </p>
+          </div>
         </div>
+        <Button
+          onClick={handleEnableNotifications}
+          variant="outline"
+          size="sm"
+          className={`border-[#96D7FE]/30 flex-shrink-0 ${notificationsEnabled ? 'text-[#96D7FE] border-[#96D7FE]' : 'text-gray-400'}`}
+        >
+          {notificationsEnabled ? <BellIcon size={18} /> : <BellOff size={18} />}
+          <span className="hidden sm:inline ml-2">
+            {notificationsEnabled ? 'Notifications On' : 'Enable Alerts'}
+          </span>
+        </Button>
       </header>
 
       <main className="flex-1 overflow-auto bg-black p-3 sm:p-6">
@@ -172,7 +214,7 @@ const HomeownerDashboard = () => {
                 value="updates" 
                 className="data-[state=active]:bg-[#96D7FE] data-[state=active]:text-black data-[state=active]:shadow-lg text-gray-300 text-sm sm:text-base py-3 sm:py-4 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-lg font-semibold transition-all"
               >
-                <Bell size={18} className="sm:w-5 sm:h-5" />
+                <BellIcon size={18} className="sm:w-5 sm:h-5" />
                 <div className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1">
                   <span className="text-xs sm:text-base">Updates</span>
                   <span className="text-xs bg-[#96D7FE]/20 px-1.5 py-0.5 rounded">
