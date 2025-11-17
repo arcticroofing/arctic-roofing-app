@@ -1,91 +1,38 @@
-import { supabase } from '@/lib/supabase';
-
-export interface Manager {
-  id: string;
-  name: string;
-  email: string;
-}
-
 export interface Homeowner {
   id: string;
-  name: string;
   email: string;
+  password: string;
+  name: string;
   projectId: string;
 }
 
-export const loginManager = async (
-  email: string,
-  password: string
-): Promise<Manager | null> => {
-  console.log('🔍 Attempting manager login for:', email);
-  
-  const { data, error } = await supabase
-    .from('managers')
-    .select('*')
-    .eq('email', email)
-    .eq('password_hash', password)
-    .single();
-
-  if (error || !data) {
-    console.error('❌ Manager login failed:', error);
-    return null;
+// In a real app, passwords would be hashed and stored securely
+let homeowners: Homeowner[] = [
+  {
+    id: 'h1',
+    email: 'mitchell@email.com',
+    password: 'demo123',
+    name: 'John & Sarah Mitchell',
+    projectId: '1'
+  },
+  {
+    id: 'h2',
+    email: 'chen@email.com',
+    password: 'demo123',
+    name: 'Robert & Linda Chen',
+    projectId: '2'
   }
+];
 
-  const manager: Manager = {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-  };
-
-  console.log('✅ Manager login successful:', manager);
-  localStorage.setItem('currentManager', JSON.stringify(manager));
-  return manager;
-};
-
-export const loginHomeowner = async (
-  email: string,
-  password: string
-): Promise<Homeowner | null> => {
-  console.log('🔍 Attempting homeowner login for:', email);
-  
-  const { data, error } = await supabase
-    .from('homeowners')
-    .select('*')
-    .eq('email', email)
-    .eq('password_hash', password)
-    .single();
-
-  if (error || !data) {
-    console.error('❌ Homeowner login failed:', error);
-    return null;
-  }
-
-  const homeowner: Homeowner = {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-    projectId: data.project_id,
-  };
-
-  console.log('✅ Homeowner login successful:', homeowner);
-  console.log('📋 Project ID:', homeowner.projectId);
-
-  if (!homeowner.projectId) {
-    console.error('❌ WARNING: Homeowner has no project_id!');
-  }
-
-  localStorage.setItem('currentHomeowner', JSON.stringify(homeowner));
-  return homeowner;
-};
-
-export const logoutManager = () => {
-  console.log('👋 Logging out manager');
-  localStorage.removeItem('currentManager');
-};
-
-export const logoutHomeowner = () => {
-  console.log('👋 Logging out homeowner');
-  localStorage.removeItem('currentHomeowner');
+export const loginHomeowner = async (email: string, password: string): Promise<Homeowner | null> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const homeowner = homeowners.find(
+        h => h.email.toLowerCase() === email.toLowerCase() && h.password === password
+      );
+      resolve(homeowner || null);
+    }, 500);
+  });
 };
 
 export const createHomeownerAccount = async (
@@ -93,37 +40,61 @@ export const createHomeownerAccount = async (
   email: string,
   projectId: string
 ): Promise<{ homeowner: Homeowner; temporaryPassword: string }> => {
-  console.log('🆕 Creating homeowner account:', { name, email, projectId });
-  
-  const temporaryPassword = Math.random().toString(36).slice(-8);
-
-  const { data, error } = await supabase
-    .from('homeowners')
-    .insert([
-      {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const temporaryPassword = `Arctic${Math.floor(1000 + Math.random() * 9000)}`;
+      
+      const newHomeowner: Homeowner = {
+        id: `h_${Date.now()}`,
+        email: email.toLowerCase(),
+        password: temporaryPassword,
         name,
-        email,
-        password_hash: temporaryPassword,
-        project_id: projectId,
-      },
-    ])
-    .select()
-    .single();
+        projectId
+      };
+      
+      homeowners.push(newHomeowner);
+      
+      console.log('New homeowner account created:', {
+        email: newHomeowner.email,
+        password: temporaryPassword
+      });
+      
+      resolve({ homeowner: newHomeowner, temporaryPassword });
+    }, 500);
+  });
+};
 
-  if (error) {
-    console.error('❌ Error creating homeowner account:', error);
-    throw error;
+export const getCurrentHomeowner = (): Homeowner | null => {
+  const stored = localStorage.getItem('currentHomeowner');
+  const expiry = localStorage.getItem('homeownerExpiry');
+  
+  if (!stored || !expiry) return null;
+  
+  // Check if session expired
+  const expiryTime = parseInt(expiry);
+  const now = Date.now();
+  
+  if (now > expiryTime) {
+    console.log('⏰ Homeowner session expired');
+    localStorage.removeItem('currentHomeowner');
+    localStorage.removeItem('homeownerExpiry');
+    return null;
   }
+  
+  return JSON.parse(stored);
+};
 
-  console.log('✅ Homeowner account created:', data);
+export const setCurrentHomeowner = (homeowner: Homeowner): void => {
+  localStorage.setItem('currentHomeowner', JSON.stringify(homeowner));
+  
+  // Set expiry to 90 days from now
+  const expiryTime = Date.now() + (90 * 24 * 60 * 60 * 1000);
+  localStorage.setItem('homeownerExpiry', expiryTime.toString());
+  
+  console.log('✅ Homeowner session saved (expires in 90 days)');
+};
 
-  return {
-    homeowner: {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      projectId: data.project_id,
-    },
-    temporaryPassword,
-  };
+export const logoutHomeowner = (): void => {
+  localStorage.removeItem('currentHomeowner');
+  localStorage.removeItem('homeownerExpiry');
 };
