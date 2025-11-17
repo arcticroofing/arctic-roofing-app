@@ -9,10 +9,15 @@ export interface NotificationSubscription {
   };
 }
 
+// Check if notifications are supported
+export const isNotificationSupported = (): boolean => {
+  return 'Notification' in window && 'serviceWorker' in navigator;
+};
+
 // Request notification permission
 export const requestNotificationPermission = async (): Promise<boolean> => {
-  if (!('Notification' in window)) {
-    console.log('This browser does not support notifications');
+  if (!isNotificationSupported()) {
+    console.log('Notifications not supported on this device');
     return false;
   }
 
@@ -28,18 +33,51 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   return false;
 };
 
+// Register service worker
+export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
+  if (!('serviceWorker' in navigator)) {
+    console.log('Service workers not supported');
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+    });
+    console.log('Service Worker registered:', registration);
+    return registration;
+  } catch (error) {
+    console.error('Service Worker registration failed:', error);
+    return null;
+  }
+};
+
 // Subscribe to push notifications
 export const subscribeToPushNotifications = async (homeownerId: string): Promise<boolean> => {
   try {
+    // Request permission
     const permission = await requestNotificationPermission();
     if (!permission) {
       console.log('Notification permission denied');
       return false;
     }
 
-    // For now, just save that notifications are enabled
-    // Full push notification setup requires VAPID keys
+    // Register service worker
+    const registration = await registerServiceWorker();
+    if (!registration) {
+      console.log('Service worker registration failed');
+      return false;
+    }
+
+    // Save to localStorage that notifications are enabled
+    localStorage.setItem('notifications_enabled', 'true');
+    localStorage.setItem('homeowner_id', homeownerId);
+
     console.log('Notifications enabled for homeowner:', homeownerId);
+    
+    // Show test notification
+    showTestNotification();
+    
     return true;
   } catch (error) {
     console.error('Error subscribing to push notifications:', error);
@@ -47,26 +85,64 @@ export const subscribeToPushNotifications = async (homeownerId: string): Promise
   }
 };
 
-// Send local notification (for testing)
+// Show test notification
+export const showTestNotification = () => {
+  if (Notification.permission === 'granted') {
+    new Notification('Notifications Enabled! 🔔', {
+      body: 'You will now receive updates about your project',
+      icon: '/arctic-roofing-logo.png',
+      badge: '/arctic-roofing-logo.png',
+      tag: 'test-notification',
+    });
+  }
+};
+
+// Send local notification
 export const sendLocalNotification = (title: string, body: string, icon?: string) => {
-  if (!('Notification' in window)) {
+  if (!isNotificationSupported()) {
     console.log('Notifications not supported');
     return;
   }
 
-  if (Notification.permission === 'granted') {
-    try {
-      new Notification(title, {
-        body,
-        icon: icon || '/arctic-roofing-logo.png',
-        badge: '/arctic-roofing-logo.png',
-        tag: 'arctic-roofing',
-        requireInteraction: false,
-      });
-    } catch (error) {
-      console.error('Error showing notification:', error);
-    }
-  } else {
+  if (Notification.permission !== 'granted') {
     console.log('Notification permission not granted');
+    return;
   }
+
+  try {
+    // Check if notifications are enabled for this user
+    const notificationsEnabled = localStorage.getItem('notifications_enabled') === 'true';
+    
+    if (!notificationsEnabled) {
+      console.log('Notifications not enabled by user');
+      return;
+    }
+
+    // Create notification
+    const notification = new Notification(title, {
+      body,
+      icon: icon || '/arctic-roofing-logo.png',
+      badge: '/arctic-roofing-logo.png',
+      tag: 'arctic-roofing-update',
+      requireInteraction: false,
+      silent: false,
+    });
+
+    // Auto close after 10 seconds
+    setTimeout(() => {
+      notification.close();
+    }, 10000);
+
+    console.log('Notification sent:', title);
+  } catch (error) {
+    console.error('Error showing notification:', error);
+  }
+};
+
+// Check if notifications are enabled
+export const areNotificationsEnabled = (): boolean => {
+  return (
+    Notification.permission === 'granted' &&
+    localStorage.getItem('notifications_enabled') === 'true'
+  );
 };
