@@ -2,172 +2,91 @@ import { supabase } from '@/lib/supabase';
 
 export interface Manager {
   id: string;
-  email: string;
-  password: string;
   name: string;
-  role: string;
+  email: string;
 }
 
 export interface Homeowner {
   id: string;
-  email: string;
-  password: string;
   name: string;
+  email: string;
   projectId: string;
 }
 
-export const loginManager = async (email: string, password: string): Promise<Manager | null> => {
-  console.log('Attempting manager login with Supabase:', email);
+export const loginManager = async (
+  email: string,
+  password: string
+): Promise<Manager | null> => {
+  console.log('🔍 Attempting manager login for:', email);
   
   const { data, error } = await supabase
     .from('managers')
     .select('*')
-    .eq('email', email.toLowerCase())
+    .eq('email', email)
+    .eq('password', password)
     .single();
 
   if (error || !data) {
-    console.error('Manager login error:', error);
+    console.error('❌ Manager login failed:', error);
     return null;
   }
 
-  if (data.password_hash !== password) {
-    console.error('Password mismatch');
-    return null;
-  }
-
-  console.log('Manager found:', data);
-  
-  const manager = {
+  const manager: Manager = {
     id: data.id,
-    email: data.email,
-    password: data.password_hash,
     name: data.name,
-    role: data.role
+    email: data.email,
   };
 
-  setCurrentManager(manager);
-  
+  console.log('✅ Manager login successful:', manager);
+  localStorage.setItem('currentManager', JSON.stringify(manager));
   return manager;
 };
 
-export const logoutManager = (): void => {
-  console.log('Manager logged out');
-  localStorage.removeItem('currentManager');
-};
-
-export const setCurrentManager = (manager: Manager): void => {
-  console.log('Saving manager to localStorage:', manager);
-  localStorage.setItem('currentManager', JSON.stringify(manager));
-};
-
-export const getCurrentManager = async (managerId: string | undefined): Promise<Manager | null> => {
-  if (!managerId) {
-    console.error('No manager ID provided');
-    return null;
-  }
-
-  console.log('Fetching current manager:', managerId);
-  
-  const { data, error } = await supabase
-    .from('managers')
-    .select('*')
-    .eq('id', managerId)
-    .single();
-
-  if (error || !data) {
-    console.error('Error fetching manager:', error);
-    return null;
-  }
-
-  return {
-    id: data.id,
-    email: data.email,
-    password: data.password_hash,
-    name: data.name,
-    role: data.role
-  };
-};
-
-export const loginHomeowner = async (email: string, password: string): Promise<Homeowner | null> => {
-  console.log('Attempting homeowner login');
-  console.log('Email entered:', email);
-  console.log('Password entered:', password);
+export const loginHomeowner = async (
+  email: string,
+  password: string
+): Promise<Homeowner | null> => {
+  console.log('🔍 Attempting homeowner login for:', email);
   
   const { data, error } = await supabase
     .from('homeowners')
     .select('*')
-    .eq('email', email.toLowerCase())
+    .eq('email', email)
+    .eq('password', password)
     .single();
 
-  console.log('Query result:', data);
-  console.log('Query error:', error);
-
   if (error || !data) {
-    console.error('Homeowner not found in database');
+    console.error('❌ Homeowner login failed:', error);
     return null;
   }
 
-  console.log('Homeowner found:', data.email);
-  console.log('Stored password:', data.password_hash);
-  console.log('Entered password:', password);
-  console.log('Passwords match:', data.password_hash === password);
-
-  if (data.password_hash !== password) {
-    console.error('Password mismatch');
-    return null;
-  }
-
-  console.log('Login successful');
-  
-  const homeowner = {
+  const homeowner: Homeowner = {
     id: data.id,
-    email: data.email,
-    password: data.password_hash,
     name: data.name,
-    projectId: data.project_id
+    email: data.email,
+    projectId: data.project_id,
   };
 
-  setCurrentHomeowner(homeowner);
-  
+  console.log('✅ Homeowner login successful:', homeowner);
+  console.log('📋 Project ID from database:', data.project_id);
+  console.log('📋 Project ID in object:', homeowner.projectId);
+
+  if (!homeowner.projectId) {
+    console.error('❌ WARNING: Homeowner has no project_id in database!');
+  }
+
+  localStorage.setItem('currentHomeowner', JSON.stringify(homeowner));
   return homeowner;
 };
 
-export const logoutHomeowner = (): void => {
-  console.log('Homeowner logged out');
+export const logoutManager = () => {
+  console.log('👋 Logging out manager');
+  localStorage.removeItem('currentManager');
+};
+
+export const logoutHomeowner = () => {
+  console.log('👋 Logging out homeowner');
   localStorage.removeItem('currentHomeowner');
-};
-
-export const setCurrentHomeowner = (homeowner: Homeowner): void => {
-  console.log('Saving homeowner to localStorage:', homeowner);
-  localStorage.setItem('currentHomeowner', JSON.stringify(homeowner));
-};
-
-export const getCurrentHomeowner = async (homeownerId: string | undefined): Promise<Homeowner | null> => {
-  if (!homeownerId) {
-    console.error('No homeowner ID provided');
-    return null;
-  }
-
-  console.log('Fetching current homeowner:', homeownerId);
-  
-  const { data, error } = await supabase
-    .from('homeowners')
-    .select('*')
-    .eq('id', homeownerId)
-    .single();
-
-  if (error || !data) {
-    console.error('Error fetching homeowner:', error);
-    return null;
-  }
-
-  return {
-    id: data.id,
-    email: data.email,
-    password: data.password_hash,
-    name: data.name,
-    projectId: data.project_id
-  };
 };
 
 export const createHomeownerAccount = async (
@@ -175,41 +94,37 @@ export const createHomeownerAccount = async (
   email: string,
   projectId: string
 ): Promise<{ homeowner: Homeowner; temporaryPassword: string }> => {
-  const temporaryPassword = `Arctic${Math.floor(Math.random() * 10000)}`;
+  console.log('🆕 Creating homeowner account:', { name, email, projectId });
   
-  console.log('Creating homeowner account...');
-  console.log('Email:', email);
-  console.log('Name:', name);
-  console.log('Generated Password:', temporaryPassword);
-  console.log('Project ID:', projectId);
-  
+  const temporaryPassword = Math.random().toString(36).slice(-8);
+
   const { data, error } = await supabase
     .from('homeowners')
-    .insert([{
-      email: email.toLowerCase(),
-      password_hash: temporaryPassword,
-      name: name,
-      project_id: projectId
-    }])
+    .insert([
+      {
+        name,
+        email,
+        password: temporaryPassword,
+        project_id: projectId,
+      },
+    ])
     .select()
     .single();
 
   if (error) {
-    console.error('Error creating homeowner:', error);
+    console.error('❌ Error creating homeowner account:', error);
     throw error;
   }
 
-  console.log('Homeowner created successfully:', data);
-  console.log('Password saved to database:', data.password_hash);
+  console.log('✅ Homeowner account created:', data);
 
   return {
     homeowner: {
       id: data.id,
-      email: data.email,
-      password: data.password_hash,
       name: data.name,
-      projectId: data.project_id
+      email: data.email,
+      projectId: data.project_id,
     },
-    temporaryPassword: data.password_hash
+    temporaryPassword,
   };
 };
