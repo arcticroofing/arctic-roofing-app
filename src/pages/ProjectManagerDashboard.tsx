@@ -1,17 +1,30 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getAllProjects } from '../services/projectService';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { getAllProjects, addProjectUpdate } from '../services/projectService';
 import { useAuth } from '../contexts/AuthContext';
 import { CreateProject } from '../components/CreateProject';
-import { Calendar, DollarSign, User, MapPin, TrendingUp, Eye } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Calendar, DollarSign, User, MapPin, TrendingUp, Eye, Plus, LogOut } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const ProjectManagerDashboard = () => {
   const navigate = useNavigate();
-  const { isManagerAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { isManagerAuthenticated, currentManager, logoutManager } = useAuth();
+  
+  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [updateTitle, setUpdateTitle] = useState('');
+  const [updateDescription, setUpdateDescription] = useState('');
+  const [updatePhotos, setUpdatePhotos] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   React.useEffect(() => {
     if (!isManagerAuthenticated) {
@@ -23,6 +36,60 @@ const ProjectManagerDashboard = () => {
     queryKey: ['projects'],
     queryFn: getAllProjects,
   });
+
+  const addUpdateMutation = useMutation({
+    mutationFn: ({ projectId, update }: any) => addProjectUpdate(projectId, update),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      toast({
+        title: "Update Posted",
+        description: "Project update has been successfully posted.",
+      });
+      setUpdateTitle('');
+      setUpdateDescription('');
+      setUpdatePhotos('');
+      setSelectedProject('');
+      setDialogOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to post update. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePostUpdate = () => {
+    if (!selectedProject || !updateTitle || !updateDescription) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const photos = updatePhotos
+      .split('\n')
+      .map(url => url.trim())
+      .filter(url => url.length > 0);
+
+    addUpdateMutation.mutate({
+      projectId: selectedProject,
+      update: {
+        title: updateTitle,
+        description: updateDescription,
+        author: currentManager?.name || 'Project Manager',
+        photos: photos.length > 0 ? photos : undefined,
+      },
+    });
+  };
+
+  const handleLogout = () => {
+    logoutManager();
+    navigate('/manager/login');
+  };
 
   const statusColors = {
     'Not Started': 'bg-gray-500',
@@ -58,22 +125,111 @@ const ProjectManagerDashboard = () => {
 
   return (
     <div className="flex flex-col h-full w-full bg-black">
-      <header className="flex items-center justify-between sticky top-0 z-10 gap-2 sm:gap-4 border-b border-[#96D7FE]/20 bg-black px-3 sm:px-6 py-3 sm:py-4 shadow-lg shadow-[#96D7FE]/5">
+      <header className="flex items-center justify-between sticky top-0 z-10 gap-2 border-b border-[#96D7FE]/20 bg-black px-3 sm:px-6 py-3 sm:py-4 shadow-lg shadow-[#96D7FE]/5">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
           <SidebarTrigger className="text-[#96D7FE] flex-shrink-0" />
           <div className="min-w-0">
             <h1 className="text-lg sm:text-2xl font-semibold text-white truncate">Manager Dashboard</h1>
-            <p className="text-xs sm:text-sm text-gray-400 hidden sm:block">Manage all roofing projects</p>
+            <p className="text-xs sm:text-sm text-gray-400 hidden sm:block">
+              Welcome, <strong className="text-[#96D7FE]">{currentManager?.name}</strong>
+            </p>
           </div>
         </div>
-        <div className="flex-shrink-0">
+        
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold">
+                <Plus className="mr-2" size={18} />
+                <span className="hidden sm:inline">Post Update</span>
+                <span className="sm:hidden">Update</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl bg-gray-900 border-[#96D7FE]/30 text-white max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-white">Post Project Update</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="project" className="text-gray-300">Select Project</Label>
+                  <select
+                    id="project"
+                    value={selectedProject}
+                    onChange={(e) => setSelectedProject(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-black border border-[#96D7FE]/30 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#96D7FE]"
+                  >
+                    <option value="">Choose a project...</option>
+                    {projects?.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.homeownerName} - {project.address}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <Label htmlFor="title" className="text-gray-300">Update Title</Label>
+                  <Input
+                    id="title"
+                    value={updateTitle}
+                    onChange={(e) => setUpdateTitle(e.target.value)}
+                    placeholder="e.g., Shingles Installation Complete"
+                    className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="description" className="text-gray-300">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={updateDescription}
+                    onChange={(e) => setUpdateDescription(e.target.value)}
+                    placeholder="Describe the work completed and any important details..."
+                    rows={4}
+                    className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="photos" className="text-gray-300">Photo URLs (one per line)</Label>
+                  <Textarea
+                    id="photos"
+                    value={updatePhotos}
+                    onChange={(e) => setUpdatePhotos(e.target.value)}
+                    placeholder="https://example.com/photo1.jpg&#10;https://example.com/photo2.jpg"
+                    rows={3}
+                    className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
+                  />
+                </div>
+
+                <Button
+                  onClick={handlePostUpdate}
+                  className="w-full bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold"
+                  disabled={addUpdateMutation.isPending}
+                >
+                  {addUpdateMutation.isPending ? 'Posting...' : 'Post Update'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <CreateProject />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="gap-2 border-[#96D7FE]/30 text-[#96D7FE] hover:bg-[#96D7FE]/10"
+          >
+            <LogOut size={16} />
+            <span className="hidden sm:inline">Logout</span>
+          </Button>
         </div>
       </header>
 
       <main className="flex-1 overflow-auto bg-black p-3 sm:p-6">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-          {/* Stats Cards - Mobile Optimized */}
+          {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card className="bg-gray-900 border-[#96D7FE]/30">
               <CardHeader className="pb-2 sm:pb-3">
@@ -120,7 +276,7 @@ const ProjectManagerDashboard = () => {
             </Card>
           </div>
 
-          {/* Projects List - Mobile Optimized */}
+          {/* Projects List */}
           <Card className="bg-gray-900 border-[#96D7FE]/30">
             <CardHeader>
               <CardTitle className="text-white text-base sm:text-lg">All Projects</CardTitle>
@@ -132,11 +288,9 @@ const ProjectManagerDashboard = () => {
                     <div
                       key={project.id}
                       className="bg-gray-800 rounded-lg p-3 sm:p-4 border border-[#96D7FE]/20 hover:border-[#96D7FE] transition-all cursor-pointer"
-                      onClick={() => navigate(`/project/${project.id}`)}
+                      onClick={() => navigate(`/manager/project/${project.id}`)}
                     >
-                      {/* Mobile Layout */}
                       <div className="space-y-3">
-                        {/* Header Row */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <h3 className="text-base sm:text-lg font-semibold text-white mb-1 break-words">
@@ -152,7 +306,6 @@ const ProjectManagerDashboard = () => {
                           </span>
                         </div>
 
-                        {/* Info Grid - Stacks on Mobile */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs sm:text-sm">
                           <div className="flex items-center gap-1.5 text-gray-400">
                             <User size={14} className="text-[#96D7FE] flex-shrink-0" />
@@ -172,7 +325,6 @@ const ProjectManagerDashboard = () => {
                           </div>
                         </div>
 
-                        {/* Progress Bar */}
                         <div className="w-full bg-gray-700 rounded-full h-2">
                           <div
                             className="bg-[#96D7FE] h-2 rounded-full transition-all duration-500"
@@ -180,11 +332,10 @@ const ProjectManagerDashboard = () => {
                           />
                         </div>
 
-                        {/* View Button - Full Width on Mobile */}
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/project/${project.id}`);
+                            navigate(`/manager/project/${project.id}`);
                           }}
                           className="w-full sm:w-auto bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold text-sm"
                         >

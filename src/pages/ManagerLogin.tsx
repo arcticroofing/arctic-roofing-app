@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Briefcase } from 'lucide-react';
+import { ArrowLeft, Shield } from 'lucide-react';
 
 const ManagerLogin = () => {
   const navigate = useNavigate();
@@ -106,13 +106,6 @@ const ManagerLogin = () => {
             </form>
           </CardContent>
         </Card>
-
-        <div className="mt-4 text-center text-sm text-gray-500">
-          <p>Default credentials:</p>
-          <p className="text-gray-400">Email: noah@arcticroofing.org</p>
-          <p className="text-gray-400">Password: arctic2024</p>
-        </div>
-      </div>
     </div>
   );
 };

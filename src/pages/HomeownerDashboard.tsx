@@ -136,8 +136,6 @@ const HomeownerDashboard = () => {
 
     console.log('🔔 Setting up real-time subscription for:', currentHomeowner.projectId);
 
-    const previousProjectRef = React.useRef(project);
-
     const channel = supabase
       .channel('project-updates')
       .on('postgres_changes', 
@@ -149,49 +147,27 @@ const HomeownerDashboard = () => {
           if (changed?.id === currentHomeowner.projectId) {
             console.log('✅ OUR PROJECT WAS UPDATED!');
             
-            const oldProject = previousProjectRef.current;
             let notificationTitle = "Project Updated! 🔄";
             let notificationBody = "Your project has been updated.";
             
-            // Check for stage changes
-            const oldStages = oldProject?.stages || [];
-            const newStages = changed.stages || [];
-            
-            const changedStages = newStages.filter((newStage: any, index: number) => {
-              const oldStage = oldStages[index];
-              return oldStage && newStage.completed !== oldStage.completed;
-            });
-
-            if (changedStages.length > 0) {
-              const stage = changedStages[0];
-              if (stage.completed) {
-                notificationTitle = "Stage Completed! ✅";
-                notificationBody = `${stage.name} has been completed`;
-              } else {
-                notificationTitle = "Stage Updated 🔄";
-                notificationBody = `${stage.name} has been marked as incomplete`;
-              }
+            if (changed.stages) {
+              const completedStages = changed.stages.filter((s: any) => s.completed);
+              const lastCompleted = completedStages[completedStages.length - 1];
               
-              if (changedStages.length > 1) {
-                notificationBody += ` and ${changedStages.length - 1} other stage(s)`;
+              if (lastCompleted) {
+                notificationTitle = "Stage Completed! ✅";
+                notificationBody = `${lastCompleted.name} has been completed`;
               }
             }
             
-            // Check for photo changes
-            const oldPhotos = oldProject?.photos || [];
-            const newPhotos = changed.photos || [];
-            
-            if (newPhotos.length > oldPhotos.length) {
-              const photosAdded = newPhotos.length - oldPhotos.length;
+            if (changed.photos && Array.isArray(changed.photos)) {
               notificationTitle = "New Photo Added! 📷";
-              notificationBody = photosAdded === 1 
+              notificationBody = changed.photos.length === 1 
                 ? "A new photo has been added to your project"
-                : `${photosAdded} new photos have been added to your project`;
+                : `${changed.photos.length} photos in your project`;
             }
             
-            // Check if project completed
-            const completedCount = newStages.filter((s: any) => s.completed).length;
-            if (completedCount === newStages.length && newStages.length > 0) {
+            if (changed.progress === 100) {
               notificationTitle = "Project Completed! 🎉";
               notificationBody = "All stages have been completed!";
             }
@@ -266,7 +242,7 @@ const HomeownerDashboard = () => {
       console.log('🧹 Unsubscribing from realtime');
       channel.unsubscribe();
     };
-  }, [currentHomeowner?.projectId, project, refetch, toast, queryClient]);
+  }, [currentHomeowner?.projectId, refetch, toast, queryClient]);
 
   const statusColors = {
     'Not Started': 'bg-gray-500',
