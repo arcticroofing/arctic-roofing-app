@@ -12,7 +12,6 @@ import { PhotoLightbox } from '../components/PhotoLightbox';
 import { useToast } from '@/hooks/use-toast';
 import { subscribeToPushNotifications } from '../services/notificationService';
 import { supabase } from '@/lib/supabase';
-import { RealtimeDebug } from '../components/RealtimeDebug';
 import { Calendar, DollarSign, User, MapPin, FileText, TrendingUp, Image as ImageIcon, Bell as BellIcon, BellOff, RefreshCw } from 'lucide-react';
 
 const HomeownerDashboard = () => {
@@ -21,6 +20,13 @@ const HomeownerDashboard = () => {
   const queryClient = useQueryClient();
   const { currentHomeowner, isHomeownerAuthenticated } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState(() => {
+    return localStorage.getItem('homeowner-active-tab') || 'overview';
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('homeowner-active-tab', activeTab);
+  }, [activeTab]);
 
   React.useEffect(() => {
     if (!isHomeownerAuthenticated) {
@@ -40,7 +46,6 @@ const HomeownerDashboard = () => {
     queryFn: async () => {
       console.log('🔍 Fetching project for homeowner:', currentHomeowner?.projectId);
       
-      // Fetch directly from Supabase, bypassing any cache
       const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -52,7 +57,6 @@ const HomeownerDashboard = () => {
         throw error;
       }
 
-      // Fetch updates
       const { data: updatesData } = await supabase
         .from('project_updates')
         .select('*')
@@ -108,7 +112,6 @@ const HomeownerDashboard = () => {
     }
     if (project) {
       console.log('✅ Project loaded successfully');
-      console.log('📊 Current stages:', project.stages);
     }
   }, [error, project]);
 
@@ -250,11 +253,6 @@ const HomeownerDashboard = () => {
           <div className="text-center">
             <p className="text-gray-400 mb-4">No project found</p>
             <p className="text-sm text-gray-500">Please contact your project manager</p>
-            <div className="mt-4 p-4 bg-gray-900 rounded-lg border border-[#96D7FE]/20">
-              <p className="text-xs text-gray-500">Debug Info:</p>
-              <p className="text-xs text-gray-400">Homeowner ID: {currentHomeowner?.id}</p>
-              <p className="text-xs text-gray-400">Project ID: {currentHomeowner?.projectId || 'MISSING'}</p>
-            </div>
           </div>
         </main>
       </div>
@@ -355,9 +353,7 @@ const HomeownerDashboard = () => {
             </div>
           </div>
 
-          <RealtimeDebug projectId={project.id} />
-
-          <Tabs defaultValue="overview" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-900 border-2 border-[#96D7FE]/40 h-auto p-1 rounded-xl shadow-lg shadow-[#96D7FE]/10">
               <TabsTrigger 
                 value="overview" 
