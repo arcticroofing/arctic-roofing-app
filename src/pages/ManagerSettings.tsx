@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Manager {
@@ -17,6 +17,7 @@ interface Manager {
 }
 
 export default function ManagerSettings() {
+  const navigate = useNavigate();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -92,9 +93,16 @@ export default function ManagerSettings() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-black">
-      <header className="flex items-center sticky top-0 z-10 gap-4 border-b border-[#96D7FE]/20 bg-black px-6 py-4">
-        <SidebarTrigger className="text-[#96D7FE]" />
+    <div className="flex flex-col h-full w-full bg-black min-h-screen">
+      <header className="flex items-center gap-4 border-b border-[#96D7FE]/20 bg-black px-6 py-4">
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/manager')}
+          className="gap-2 text-[#96D7FE] hover:text-[#7bc5ec] hover:bg-[#96D7FE]/10"
+        >
+          <ArrowLeft size={18} />
+          Back
+        </Button>
         <h1 className="text-2xl font-semibold text-white">Manager Settings</h1>
       </header>
 
@@ -127,6 +135,7 @@ export default function ManagerSettings() {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="bg-black border-[#96D7FE]/30 text-white"
+                      placeholder="John Smith"
                       required
                     />
                   </div>
@@ -138,6 +147,7 @@ export default function ManagerSettings() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="bg-black border-[#96D7FE]/30 text-white"
+                      placeholder="john@arcticroofing.com"
                       required
                     />
                   </div>
@@ -149,7 +159,7 @@ export default function ManagerSettings() {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="bg-black border-[#96D7FE]/30 text-white"
-                      placeholder="+1234567890"
+                      placeholder="+19075551234"
                       required
                     />
                   </div>
@@ -161,9 +171,12 @@ export default function ManagerSettings() {
                       value={formData.photo}
                       onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
                       className="bg-black border-[#96D7FE]/30 text-white"
-                      placeholder="https://example.com/photo.jpg"
+                      placeholder="https://i.pravatar.cc/150?img=12"
                       required
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Try: https://i.pravatar.cc/150?img=12 (change number 1-70)
+                    </p>
                   </div>
 
                   <div className="flex gap-3">
@@ -192,44 +205,56 @@ export default function ManagerSettings() {
           )}
 
           {/* Managers List */}
-          <div className="space-y-4">
-            {managers.map((manager) => (
-              <Card key={manager.id} className="bg-gray-900 border-[#96D7FE]/30">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={manager.photo}
-                      alt={manager.name}
-                      className="w-16 h-16 rounded-full border-2 border-[#96D7FE]"
-                    />
-                    <div className="flex-1">
-                      <h3 className="text-white font-semibold text-lg">{manager.name}</h3>
-                      <p className="text-gray-400 text-sm">{manager.email}</p>
-                      <p className="text-gray-400 text-sm">{manager.phone}</p>
+          {managers.length === 0 && !showForm ? (
+            <Card className="bg-gray-900 border-[#96D7FE]/30">
+              <CardContent className="p-12 text-center">
+                <p className="text-gray-400 text-lg mb-4">No managers yet</p>
+                <p className="text-gray-500 text-sm">Click "Add Manager" to create your first manager profile</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {managers.map((manager) => (
+                <Card key={manager.id} className="bg-gray-900 border-[#96D7FE]/30">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={manager.photo}
+                        alt={manager.name}
+                        className="w-16 h-16 rounded-full border-2 border-[#96D7FE]"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://i.pravatar.cc/150?img=12';
+                        }}
+                      />
+                      <div className="flex-1">
+                        <h3 className="text-white font-semibold text-lg">{manager.name}</h3>
+                        <p className="text-gray-400 text-sm">{manager.email}</p>
+                        <p className="text-gray-400 text-sm">{manager.phone}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleEdit(manager)}
+                          className="border-[#96D7FE]/30 text-[#96D7FE] hover:bg-[#96D7FE]/10"
+                        >
+                          <Edit size={18} />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleDelete(manager.id)}
+                          className="border-red-500/30 text-red-500 hover:bg-red-500/10"
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleEdit(manager)}
-                        className="border-[#96D7FE]/30 text-[#96D7FE]"
-                      >
-                        <Edit size={18} />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleDelete(manager.id)}
-                        className="border-red-500/30 text-red-500"
-                      >
-                        <Trash2 size={18} />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

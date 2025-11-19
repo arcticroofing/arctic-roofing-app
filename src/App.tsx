@@ -13,6 +13,7 @@ import HomeownerDashboard from "./pages/HomeownerDashboard";
 import CreateProject from "./pages/CreateProject";
 import ProjectDetails from "./pages/ProjectDetails";
 import ManagerSettings from './pages/ManagerSettings';
+import ReferralManagement from './pages/ReferralManagement';
 
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ function App() {
               <Route path="/project/:id" element={<ProjectDetails />} />
               <Route path="*" element={<NotFound />} />
               <Route path="/manager/settings" element={<ManagerSettings />} />
+                  <Route path="/manager/referrals" element={<ReferralManagement />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>
