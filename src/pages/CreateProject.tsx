@@ -10,19 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../services/supabase';
 import { ArrowLeft, Plus, Copy, CheckCircle } from 'lucide-react';
-
-// Create a simple supabase client inline if the service doesn't exist
-const getSupabaseClient = () => {
-  try {
-    return require('../services/supabase').supabase;
-  } catch {
-    const { createClient } = require('@supabase/supabase-js');
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-    return createClient(supabaseUrl, supabaseAnonKey);
-  }
-};
 
 const CreateProject = () => {
   const navigate = useNavigate();
@@ -36,23 +25,19 @@ const CreateProject = () => {
     }
   }, [isManagerAuthenticated, navigate]);
 
-  // Fetch managers from Supabase
-  const { data: managers = [] } = useQuery({
+  const { data: managers = [], isLoading: managersLoading } = useQuery({
     queryKey: ['managers'],
     queryFn: async () => {
-      try {
-        const supabase = getSupabaseClient();
-        const { data, error } = await supabase
-          .from('managers')
-          .select('*')
-          .order('name');
-        
-        if (error) throw error;
-        return data || [];
-      } catch (error) {
-        console.error('Error fetching managers:', error);
-        return [];
-      }
+      console.log('🔍 Fetching managers...');
+      const { data, error } = await supabase
+        .from('managers')
+        .select('*')
+        .order('name');
+      
+      console.log('📊 Managers result:', { data, error });
+      
+      if (error) throw error;
+      return data || [];
     },
   });
 
@@ -77,18 +62,13 @@ const CreateProject = () => {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const supabase = getSupabaseClient();
-      
-      // Parse scope into array
       const scopeArray = data.scope
         .split('\n')
         .map(item => item.trim())
         .filter(item => item.length > 0);
 
-      // Generate temporary password
       const temporaryPassword = `Arctic${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // Create project in Supabase
       const { data: projectData, error: projectError } = await supabase
         .from('projects')
         .insert({
@@ -121,7 +101,6 @@ const CreateProject = () => {
 
       if (projectError) throw projectError;
 
-      // Create homeowner account in Supabase
       const { data: homeownerData, error: homeownerError } = await supabase
         .from('homeowners')
         .insert({
@@ -235,7 +214,6 @@ const CreateProject = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Homeowner Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-[#96D7FE]">Homeowner Information</h3>
                     
@@ -282,7 +260,6 @@ const CreateProject = () => {
                     </div>
                   </div>
 
-                  {/* Project Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-[#96D7FE]">Project Information</h3>
                     
@@ -345,32 +322,42 @@ const CreateProject = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="projectManager" className="text-gray-300">Project Manager *</Label>
-                      <Select
-                        value={formData.managerId}
-                        onValueChange={(value) => {
-                          const selectedManager = managers.find((m: any) => m.id === value);
-                          setFormData({
-                            ...formData,
-                            managerId: value,
-                            projectManager: selectedManager?.name || ''
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="bg-black border-gray-700 text-white">
-                          <SelectValue placeholder="Select a project manager" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-900 border-gray-700">
-                          {managers.map((manager: any) => (
-                            <SelectItem 
-                              key={manager.id} 
-                              value={manager.id}
-                              className="text-white hover:bg-gray-800"
-                            >
-                              {manager.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {managersLoading ? (
+                        <div className="bg-black border border-gray-700 text-gray-400 p-3 rounded-md">
+                          Loading managers...
+                        </div>
+                      ) : managers.length === 0 ? (
+                        <div className="bg-black border border-red-700 text-red-400 p-3 rounded-md">
+                          No managers found. Please add managers in Supabase.
+                        </div>
+                      ) : (
+                        <Select
+                          value={formData.managerId}
+                          onValueChange={(value) => {
+                            const selectedManager = managers.find((m: any) => m.id === value);
+                            setFormData({
+                              ...formData,
+                              managerId: value,
+                              projectManager: selectedManager?.name || ''
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="bg-black border-gray-700 text-white">
+                            <SelectValue placeholder="Select a project manager" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-900 border-gray-700">
+                            {managers.map((manager: any) => (
+                              <SelectItem 
+                                key={manager.id} 
+                                value={manager.id}
+                                className="text-white hover:bg-gray-800"
+                              >
+                                {manager.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
