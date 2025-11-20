@@ -121,7 +121,7 @@ const CreateProject = () => {
 
       return { 
         project, 
-        email: accountResult.homeowner?.email || data.homeownerEmail, 
+        email: accountResult.homeowner.email, 
         password: accountResult.temporaryPassword 
       };
     },
