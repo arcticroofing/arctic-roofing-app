@@ -13,6 +13,8 @@ import ManagerLogin from "@/pages/ManagerLogin";
 import ProjectManagerDashboard from "@/pages/ProjectManagerDashboard";
 import CreateProject from "@/pages/CreateProject";
 import ProjectDetails from "@/pages/ProjectDetails";
+import ManagerSettings from "@/pages/ManagerSettings";
+import ReferralManagement from "@/pages/ReferralManagement";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +60,8 @@ function App() {
               <Route path="/homeowner" element={<DashboardLayout><HomeownerDashboard /></DashboardLayout>} />
               <Route path="/manager" element={<DashboardLayout><ProjectManagerDashboard /></DashboardLayout>} />
               <Route path="/manager/create-project" element={<DashboardLayout><CreateProject /></DashboardLayout>} />
+              <Route path="/manager/settings" element={<DashboardLayout><ManagerSettings /></DashboardLayout>} />
+              <Route path="/manager/referrals" element={<DashboardLayout><ReferralManagement /></DashboardLayout>} />
               <Route path="/project/:id" element={<DashboardLayout><ProjectDetails /></DashboardLayout>} />
               
               {/* 404 */}
