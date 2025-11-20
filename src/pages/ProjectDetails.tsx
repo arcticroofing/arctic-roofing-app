@@ -5,18 +5,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Calendar, DollarSign, User, MapPin, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-// Get Supabase client
-const getSupabaseClient = () => {
-  try {
-    return require('../services/supabase').supabase;
-  } catch {
-    const { createClient } = require('@supabase/supabase-js');
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-    return createClient(supabaseUrl, supabaseAnonKey);
-  }
-};
+import { supabase } from '../services/supabase';
 
 const ProjectDetails = () => {
   const { id } = useParams();
@@ -25,7 +14,6 @@ const ProjectDetails = () => {
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
     queryFn: async () => {
-      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -34,7 +22,6 @@ const ProjectDetails = () => {
       
       if (error) throw error;
       
-      // Parse JSON fields if they're strings
       if (data) {
         if (typeof data.stages === 'string') data.stages = JSON.parse(data.stages);
         if (typeof data.photos === 'string') data.photos = JSON.parse(data.photos);
@@ -102,7 +89,6 @@ const ProjectDetails = () => {
       
       <main className="flex-1 overflow-auto bg-black p-6">
         <div className="max-w-6xl mx-auto space-y-6">
-          {/* Project Header */}
           <div className="bg-gray-900 rounded-lg shadow-md p-8 border border-[#96D7FE]/20">
             <div className="flex items-start justify-between mb-6">
               <div>
@@ -162,7 +148,6 @@ const ProjectDetails = () => {
             </div>
           </div>
 
-          {/* Project Scope */}
           {project.scope && project.scope.length > 0 && (
             <div className="bg-gray-900 rounded-lg shadow-md p-6 border border-[#96D7FE]/20">
               <h3 className="text-xl font-bold text-white mb-4">Project Scope</h3>
@@ -177,7 +162,6 @@ const ProjectDetails = () => {
             </div>
           )}
 
-          {/* Project Stages */}
           {project.stages && project.stages.length > 0 && (
             <div className="bg-gray-900 rounded-lg shadow-md p-6 border border-[#96D7FE]/20">
               <h3 className="text-xl font-bold text-white mb-4">Project Stages</h3>
@@ -214,7 +198,6 @@ const ProjectDetails = () => {
             </div>
           )}
 
-          {/* Project Photos */}
           {project.photos && project.photos.length > 0 && (
             <div className="bg-gray-900 rounded-lg shadow-md p-6 border border-[#96D7FE]/20">
               <h3 className="text-xl font-bold text-white mb-4">Project Photos ({project.photos.length})</h3>
