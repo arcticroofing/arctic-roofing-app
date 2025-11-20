@@ -12,8 +12,21 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { createProject } from '../services/projectService';
 import { createHomeownerAccount } from '../services/authService';
-import { supabase } from '../services/supabase';
 import { ArrowLeft, Plus, Copy, CheckCircle } from 'lucide-react';
+
+// Create a simple supabase client inline if the service doesn't exist
+const getSupabaseClient = () => {
+  try {
+    // Try to import from service
+    return require('../services/supabase').supabase;
+  } catch {
+    // Fallback: create inline
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+    return createClient(supabaseUrl, supabaseAnonKey);
+  }
+};
 
 const CreateProject = () => {
   const navigate = useNavigate();
@@ -31,13 +44,19 @@ const CreateProject = () => {
   const { data: managers = [] } = useQuery({
     queryKey: ['managers'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('managers')
-        .select('*')
-        .order('name');
-      
-      if (error) throw error;
-      return data;
+      try {
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase
+          .from('managers')
+          .select('*')
+          .order('name');
+        
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        console.error('Error fetching managers:', error);
+        return [];
+      }
     },
   });
 
@@ -65,28 +84,46 @@ const CreateProject = () => {
         .map(item => item.trim())
         .filter(item => item.length > 0);
 
-      const project = await createProject({
+      const projectData = {
         homeownerName: data.homeownerName,
         homeownerEmail: data.homeownerEmail,
         address: data.address,
         projectType: data.projectType,
-        status: 'Not Started',
+        status: 'Not Started' as const,
         startDate: data.startDate,
         estimatedCompletion: data.estimatedCompletion,
         projectManager: data.projectManager,
-        manager_id: data.managerId,
         budget: parseFloat(data.budget),
         scope: scopeArray
-      });
+      };
+
+      const project = await createProject(projectData);
 
       // Create homeowner account and get credentials
-      const { homeowner, temporaryPassword } = await createHomeownerAccount(
+      const accountResult = await createHomeownerAccount(
         data.homeownerName,
         data.homeownerEmail,
         project.id
       );
 
-      return { project, email: homeowner.email, password: temporaryPassword };
+      // Update project with manager_id if available
+      if (data.managerId) {
+        try {
+          const supabase = getSupabaseClient();
+          await supabase
+            .from('projects')
+            .update({ manager_id: data.managerId })
+            .eq('id', project.id);
+        } catch (error) {
+          console.error('Error updating manager_id:', error);
+        }
+      }
+
+      return { 
+        project, 
+        email: accountResult.homeowner?.email || data.homeownerEmail, 
+        password: accountResult.temporaryPassword 
+      };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -96,6 +133,13 @@ const CreateProject = () => {
       toast({
         title: "Project Created!",
         description: "Homeowner invitation has been generated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create project",
+        variant: "destructive",
       });
     },
   });
@@ -284,7 +328,7 @@ const CreateProject = () => {
                       <Select
                         value={formData.managerId}
                         onValueChange={(value) => {
-                          const selectedManager = managers.find(m => m.id === value);
+                          const selectedManager = managers.find((m: any) => m.id === value);
                           setFormData({
                             ...formData,
                             managerId: value,
@@ -296,7 +340,7 @@ const CreateProject = () => {
                           <SelectValue placeholder="Select a project manager" />
                         </SelectTrigger>
                         <SelectContent className="bg-gray-900 border-gray-700">
-                          {managers.map((manager) => (
+                          {managers.map((manager: any) => (
                             <SelectItem 
                               key={manager.id} 
                               value={manager.id}
