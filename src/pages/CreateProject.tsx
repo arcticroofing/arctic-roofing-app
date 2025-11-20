@@ -10,17 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { createProject } from '../services/projectService';
-import { createHomeownerAccount } from '../services/authService';
 import { ArrowLeft, Plus, Copy, CheckCircle } from 'lucide-react';
 
 // Create a simple supabase client inline if the service doesn't exist
 const getSupabaseClient = () => {
   try {
-    // Try to import from service
     return require('../services/supabase').supabase;
   } catch {
-    // Fallback: create inline
     const { createClient } = require('@supabase/supabase-js');
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -70,7 +66,10 @@ const CreateProject = () => {
     projectManager: currentManager?.name || '',
     managerId: currentManager?.id || '',
     budget: '',
-    scope: ''
+    scope: '',
+    shingleSelection: '',
+    gutterColor: '',
+    gutterSize: ''
   });
 
   const [invitationSent, setInvitationSent] = useState(false);
@@ -78,51 +77,68 @@ const CreateProject = () => {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // Create the project
+      const supabase = getSupabaseClient();
+      
+      // Parse scope into array
       const scopeArray = data.scope
         .split('\n')
         .map(item => item.trim())
         .filter(item => item.length > 0);
 
-      const projectData = {
-        homeownerName: data.homeownerName,
-        homeownerEmail: data.homeownerEmail,
-        address: data.address,
-        projectType: data.projectType,
-        status: 'Not Started' as const,
-        startDate: data.startDate,
-        estimatedCompletion: data.estimatedCompletion,
-        projectManager: data.projectManager,
-        budget: parseFloat(data.budget),
-        scope: scopeArray
-      };
+      // Generate temporary password
+      const temporaryPassword = `Arctic${Math.floor(1000 + Math.random() * 9000)}`;
 
-      const project = await createProject(projectData);
+      // Create project in Supabase
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          homeowner_name: data.homeownerName,
+          homeowner_email: data.homeownerEmail,
+          address: data.address,
+          project_type: data.projectType,
+          status: 'Not Started',
+          progress: 0,
+          start_date: data.startDate,
+          estimated_completion: data.estimatedCompletion,
+          project_manager: data.projectManager,
+          manager_id: data.managerId || null,
+          budget: parseFloat(data.budget),
+          scope: scopeArray,
+          shingle_selection: data.shingleSelection || null,
+          gutter_color: data.gutterColor || null,
+          gutter_size: data.gutterSize || null,
+          photos: [],
+          stages: [
+            { name: 'Arrival & Protection Setup', completed: false },
+            { name: 'Tear-Off & Preparation', completed: false },
+            { name: 'Underlayment & Drip Edge', completed: false },
+            { name: 'Shingle Installation', completed: false },
+            { name: 'Final Cleanup & Inspection', completed: false }
+          ]
+        })
+        .select()
+        .single();
 
-      // Create homeowner account and get credentials
-      const accountResult = await createHomeownerAccount(
-        data.homeownerName,
-        data.homeownerEmail,
-        project.id
-      );
+      if (projectError) throw projectError;
 
-      // Update project with manager_id if available
-      if (data.managerId) {
-        try {
-          const supabase = getSupabaseClient();
-          await supabase
-            .from('projects')
-            .update({ manager_id: data.managerId })
-            .eq('id', project.id);
-        } catch (error) {
-          console.error('Error updating manager_id:', error);
-        }
-      }
+      // Create homeowner account in Supabase
+      const { data: homeownerData, error: homeownerError } = await supabase
+        .from('homeowners')
+        .insert({
+          name: data.homeownerName,
+          email: data.homeownerEmail.toLowerCase(),
+          password_hash: temporaryPassword,
+          project_id: projectData.id
+        })
+        .select()
+        .single();
+
+      if (homeownerError) throw homeownerError;
 
       return { 
-        project, 
-        email: accountResult.homeowner.email, 
-        password: accountResult.temporaryPassword 
+        projectId: projectData.id,
+        email: homeownerData.email, 
+        password: temporaryPassword 
       };
     },
     onSuccess: (data) => {
@@ -136,6 +152,7 @@ const CreateProject = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Error creating project:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to create project",
@@ -175,7 +192,10 @@ const CreateProject = () => {
       projectManager: currentManager?.name || '',
       managerId: currentManager?.id || '',
       budget: '',
-      scope: ''
+      scope: '',
+      shingleSelection: '',
+      gutterColor: '',
+      gutterSize: ''
     });
     setInvitationSent(false);
     setCredentials(null);
@@ -351,6 +371,44 @@ const CreateProject = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="shingleSelection" className="text-gray-300">Shingle Selection</Label>
+                        <Input
+                          id="shingleSelection"
+                          name="shingleSelection"
+                          value={formData.shingleSelection}
+                          onChange={handleChange}
+                          className="bg-black border-gray-700 text-white"
+                          placeholder="Architectural"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="gutterColor" className="text-gray-300">Gutter Color</Label>
+                        <Input
+                          id="gutterColor"
+                          name="gutterColor"
+                          value={formData.gutterColor}
+                          onChange={handleChange}
+                          className="bg-black border-gray-700 text-white"
+                          placeholder="White"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="gutterSize" className="text-gray-300">Gutter Size</Label>
+                        <Input
+                          id="gutterSize"
+                          name="gutterSize"
+                          value={formData.gutterSize}
+                          onChange={handleChange}
+                          className="bg-black border-gray-700 text-white"
+                          placeholder="5 inch"
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
