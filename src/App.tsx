@@ -62,7 +62,7 @@ function App() {
               <Route path="/manager/create-project" element={<DashboardLayout><CreateProject /></DashboardLayout>} />
               <Route path="/manager/settings" element={<DashboardLayout><ManagerSettings /></DashboardLayout>} />
               <Route path="/manager/referrals" element={<DashboardLayout><ReferralManagement /></DashboardLayout>} />
-              <Route path="/project/:id" element={<DashboardLayout><ProjectDetails /></DashboardLayout>} />
+              <Route path="/manager/project/:id" element={<DashboardLayout><ProjectDetails /></DashboardLayout>} />
               
               {/* 404 */}
               <Route path="*" element={<AuthLayout><NotFound /></AuthLayout>} />
