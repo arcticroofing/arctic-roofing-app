@@ -1,319 +1,291 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, Link } from 'react-router-dom';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
+import { useManager } from '../contexts/ManagerContext';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { getAllProjects, addProjectUpdate } from '../services/projectService';
-import { useAuth } from '../contexts/AuthContext';
-import { Plus, Eye, LogOut } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import {
+  Loader2,
+  Plus,
+  FolderKanban,
+  Gift,
+  TrendingUp,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Settings,
+  LogOut,
+  ChevronRight,
+} from 'lucide-react';
 
-const ProjectManagerDashboard = () => {
+export default function ProjectManagerDashboard() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { isManagerAuthenticated, currentManager, logoutManager } = useAuth();
+  const { manager, loading: managerLoading } = useManager();
 
-  const [selectedProject, setSelectedProject] = useState<string>('');
-  const [updateTitle, setUpdateTitle] = useState('');
-  const [updateDescription, setUpdateDescription] = useState('');
-  const [updatePhotos, setUpdatePhotos] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  React.useEffect(() => {
-    if (!isManagerAuthenticated) {
-      navigate('/manager/login');
-    }
-  }, [isManagerAuthenticated, navigate]);
-
-  const { data: projects, isLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: getAllProjects,
-    enabled: isManagerAuthenticated,
+  const { data: projects, isLoading: projectsLoading } = useQuery({
+    queryKey: ['projects', manager?.id],
+    queryFn: async () => {
+      if (!manager?.id) return [];
+      const { data } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('manager_id', manager.id)
+        .order('created_at', { ascending: false });
+      return data || [];
+    },
+    enabled: !!manager?.id,
   });
 
-  const addUpdateMutation = useMutation({
-    mutationFn: ({ projectId, update }: any) => addProjectUpdate(projectId, update),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      toast({
-        title: 'Update Posted',
-        description: 'Project update has been successfully posted.',
-      });
-      setUpdateTitle('');
-      setUpdateDescription('');
-      setUpdatePhotos('');
-      setSelectedProject('');
-      setDialogOpen(false);
+  const { data: referrals, isLoading: referralsLoading } = useQuery({
+    queryKey: ['referrals', manager?.id],
+    queryFn: async () => {
+      if (!manager?.id) return [];
+      const { data } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('manager_id', manager.id)
+        .order('created_at', { ascending: false });
+      return data || [];
     },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to post update. Please try again.',
-        variant: 'destructive',
-      });
-    },
+    enabled: !!manager?.id,
   });
 
-  const handlePostUpdate = () => {
-    if (!selectedProject || !updateTitle || !updateDescription) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in all required fields.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const photos = updatePhotos
-      .split('\n')
-      .map((url) => url.trim())
-      .filter((url) => url.length > 0);
-
-    addUpdateMutation.mutate({
-      projectId: selectedProject,
-      update: {
-        title: updateTitle,
-        description: updateDescription,
-        author: currentManager?.name || 'Project Manager',
-        photos: photos.length > 0 ? photos : undefined,
-      },
-    });
-  };
-
-  const handleLogout = () => {
-    logoutManager();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/manager/login');
   };
 
-  const statusColors = {
-    'Not Started': 'bg-gray-500',
-    'In Progress': 'bg-[#96D7FE]',
-    'Completed': 'bg-green-500',
-    'On Hold': 'bg-yellow-500',
-  };
-
-  if (!isManagerAuthenticated) {
-    return null;
-  }
-
-  if (isLoading) {
+  if (managerLoading || projectsLoading || referralsLoading) {
     return (
-      <div className="flex flex-col h-full w-full bg-black">
-        <header className="flex items-center sticky top-0 z-10 gap-4 border-b border-[#96D7FE]/20 bg-black px-6 py-4">
-          <h1 className="text-2xl font-semibold text-white">Manager Dashboard</h1>
-        </header>
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#96D7FE] mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading projects...</p>
-          </div>
-        </main>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
+  if (!manager) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>Please log in as a manager.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/manager/login')} className="w-full">
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const stats = {
+    totalProjects: projects?.length || 0,
+    activeProjects: projects?.filter((p: any) => p.status === 'In Progress').length || 0,
+    completedProjects: projects?.filter((p: any) => p.status === 'Completed').length || 0,
+    totalReferrals: referrals?.length || 0,
+    pendingReferrals: referrals?.filter((r: any) => r.status === 'pending').length || 0,
+    totalRewards: referrals?.reduce((sum: number, r: any) => sum + (parseFloat(r.reward_amount) || 0), 0) || 0,
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'In Progress':
+        return 'bg-blue-500';
+      case 'Completed':
+        return 'bg-green-500';
+      case 'On Hold':
+        return 'bg-yellow-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full w-full bg-black">
-      <header className="flex items-center justify-between sticky top-0 z-10 gap-4 border-b border-[#96D7FE]/20 bg-black px-6 py-4 shadow-lg shadow-[#96D7FE]/5">
-        <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="container mx-auto py-8 px-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Manager Dashboard</h1>
-            <p className="text-sm text-gray-400">
-              Welcome, <strong className="text-[#96D7FE]">{currentManager?.name}</strong>
-            </p>
+            <h1 className="text-3xl font-bold">Manager Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Welcome back, {manager.name}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/manager/settings')}>
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => navigate('/manager/create-project')}
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold"
-          >
-            <Plus className="mr-2" size={18} />
-            New Project
-          </Button>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+              <FolderKanban className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalProjects}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.activeProjects} active
+              </p>
+            </CardContent>
+          </Card>
 
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold">
-                <Plus className="mr-2" size={18} />
-                Post Update
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{stats.activeProjects}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                In progress
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats.completedProjects}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Finished projects
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
+              <Gift className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalReferrals}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                All time
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Pending Referrals</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-600">{stats.pendingReferrals}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Awaiting action
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Rewards</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">${stats.totalRewards}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Approved rewards
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/manager/create-project')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                Create New Project
+              </CardTitle>
+              <CardDescription>Add a new roofing project for a homeowner</CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/manager/referrals')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5" />
+                Manage Referrals
+              </CardTitle>
+              <CardDescription>View and update customer referrals</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {/* Recent Projects */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Recent Projects</CardTitle>
+              <Button variant="ghost" size="sm">
+                View All
+                <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl bg-gray-900 border-[#96D7FE]/30 text-white max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="text-white">Post Project Update</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div>
-                  <Label htmlFor="project" className="text-gray-300">
-                    Select Project
-                  </Label>
-                  <select
-                    id="project"
-                    value={selectedProject}
-                    onChange={(e) => setSelectedProject(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 bg-black border border-[#96D7FE]/30 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#96D7FE]"
-                  >
-                    <option value="">Choose a project...</option>
-                    {projects?.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.homeownerName} - {project.address}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="title" className="text-gray-300">
-                    Update Title
-                  </Label>
-                  <Input
-                    id="title"
-                    value={updateTitle}
-                    onChange={(e) => setUpdateTitle(e.target.value)}
-                    placeholder="e.g., Shingles Installation Complete"
-                    className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="description" className="text-gray-300">
-                    Description
-                  </Label>
-                  <Textarea
-                    id="description"
-                    value={updateDescription}
-                    onChange={(e) => setUpdateDescription(e.target.value)}
-                    placeholder="Describe the work completed and any important details..."
-                    rows={4}
-                    className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="photos" className="text-gray-300">
-                    Photo URLs (one per line)
-                  </Label>
-                  <Textarea
-                    id="photos"
-                    value={updatePhotos}
-                    onChange={(e) => setUpdatePhotos(e.target.value)}
-                    placeholder="https://example.com/photo1.jpg&#10;https://example.com/photo2.jpg"
-                    rows={3}
-                    className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                  />
-                </div>
-
-                <Button
-                  onClick={handlePostUpdate}
-                  className="w-full bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold"
-                  disabled={addUpdateMutation.isPending}
-                >
-                  {addUpdateMutation.isPending ? 'Posting...' : 'Post Update'}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {projects?.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FolderKanban className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No projects yet</p>
+                <Button className="mt-4" onClick={() => navigate('/manager/create-project')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First Project
                 </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="gap-2 border-[#96D7FE]/30 text-[#96D7FE] hover:bg-[#96D7FE]/10"
-          >
-            <LogOut size={16} />
-            Logout
-          </Button>
-        </div>
-      </header>
-
-      <main className="flex-1 overflow-auto bg-black p-6">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl font-bold text-white mb-6">Active Projects</h2>
-
-          {projects && projects.length > 0 ? (
-            <div className="space-y-4">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className="bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-[#96D7FE]/20 transition-shadow border border-[#96D7FE]/20"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-1">{project.homeownerName}</h3>
-                      <p className="text-gray-300 mb-1">{project.projectType}</p>
-                      <p className="text-sm text-gray-400">{project.address}</p>
-                    </div>
-                    <span
-                      className={`${statusColors[project.status]} text-black px-4 py-2 rounded-full text-sm font-semibold`}
-                    >
-                      {project.status}
-                    </span>
-                  </div>
-
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-400">Progress</span>
-                      <span className="text-lg font-bold text-[#96D7FE]">{project.progress}%</span>
-                    </div>
-                    <Progress value={project.progress} className="h-2" />
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-                    <div>
-                      <span className="text-gray-400">Start Date</span>
-                      <p className="font-semibold text-white">
-                        {new Date(project.startDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Est. Completion</span>
-                      <p className="font-semibold text-white">
-                        {new Date(project.estimatedCompletion).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Budget</span>
-                      <p className="font-semibold text-white">${project.budget.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Updates</span>
-                      <p className="font-semibold text-white">{project.updates.length}</p>
-                    </div>
-                  </div>
-
-                  <Link
-                    to={`/manager/project/${project.id}`}
-                    className="inline-flex items-center gap-2 text-[#96D7FE] hover:text-[#7bc5ec] font-semibold"
+            ) : (
+              <div className="space-y-4">
+                {projects?.slice(0, 5).map((project: any) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                    onClick={() => navigate(`/project/${project.id}`)}
                   >
-                    <Eye size={18} />
-                    View Details
-                  </Link>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-400 mb-4">No projects yet</p>
-              <Button
-                onClick={() => navigate('/manager/create-project')}
-                className="bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold"
-              >
-                <Plus className="mr-2" size={18} />
-                Create Your First Project
-              </Button>
-            </div>
-          )}
-        </div>
-      </main>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold">{project.homeowner_name}</h3>
+                        <Badge className={getStatusColor(project.status)}>
+                          {project.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{project.address}</p>
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="flex items-center gap-2">
+                          <Progress value={project.progress} className="w-24" />
+                          <span className="text-sm font-medium">{project.progress}%</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {project.project_type}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
-};
-
-export default ProjectManagerDashboard;
+}

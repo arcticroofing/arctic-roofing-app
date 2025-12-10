@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CheckCircle2, Circle } from 'lucide-react';
+import { formatDateUTC } from '@/lib/utils';
 
 interface ProjectStage {
   id: string;
@@ -78,7 +79,7 @@ export const ProjectStages: React.FC<ProjectStagesProps> = ({ project, isManager
                   </h4>
                   {stage.completed && stage.completedDate && (
                     <p className="text-sm text-gray-400 mt-1">
-                      Completed: {new Date(stage.completedDate).toLocaleDateString()}
+                      Completed: {formatDateUTC(stage.completedDate)}
                     </p>
                   )}
                 </div>

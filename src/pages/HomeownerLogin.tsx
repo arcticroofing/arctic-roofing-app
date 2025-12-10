@@ -4,13 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Lock } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const HomeownerLogin = () => {
   const navigate = useNavigate();
-  const { loginHomeowner } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
@@ -19,22 +18,38 @@ const HomeownerLogin = () => {
     e.preventDefault();
     setIsLoading(true);
 
+    console.log('🔐 Homeowner login attempt:', formData.email);
+
     try {
-      const success = await loginHomeowner(formData.email, formData.password);
-      
-      if (success) {
-        toast({
-          title: "Login Successful",
-          description: "Welcome back!",
-        });
-        navigate('/homeowner');
-      } else {
+      const { data, error } = await supabase
+        .from('homeowners')
+        .select('*')
+        .eq('email', formData.email.toLowerCase().trim())
+        .eq('password_hash', formData.password)
+        .single();
+
+      if (error || !data) {
+        console.log('❌ Homeowner login failed');
         toast({
           title: "Login Failed",
           description: "Invalid email or password",
           variant: "destructive",
         });
+        setIsLoading(false);
+        return;
       }
+
+      console.log('✅ Homeowner login successful:', data);
+
+      // Save to localStorage
+      localStorage.setItem('homeownerSession', JSON.stringify(data));
+
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
+
+      navigate('/homeowner/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       toast({

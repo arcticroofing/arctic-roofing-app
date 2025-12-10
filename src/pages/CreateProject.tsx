@@ -1,387 +1,338 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { supabase } from '../lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { createProject } from '../services/projectService';
-import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useManager } from '../contexts/ManagerContext';
+import { ArrowLeft, Plus, Loader2 } from 'lucide-react';
 
-const CreateProject = () => {
+export default function CreateProject() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
+  const { manager, loading: managerLoading } = useManager();
+  
   const [formData, setFormData] = useState({
-    homeownerName: '',
-    homeownerEmail: '',
+    homeowner_name: '',
+    homeowner_email: '',
+    homeowner_phone: '',
     address: '',
-    projectType: '',
-    startDate: '',
-    estimatedCompletion: '',
-    projectManager: '',
+    project_type: '',
     budget: '',
-    scope: '',
-    shingleSelection: '',
-    gutterColor: '',
-    gutterSize: '',
+    start_date: '',
+    end_date: '',
   });
 
-  const [showCredentials, setShowCredentials] = useState(false);
-  const [credentials, setCredentials] = useState({ email: '', password: '' });
-
   const createProjectMutation = useMutation({
-    mutationFn: createProject,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      
-      setCredentials({
-        email: data.homeowner.email,
-        password: data.temporaryPassword,
-      });
-      setShowCredentials(true);
+    mutationFn: async (data: any) => {
+      if (!manager?.id) {
+        throw new Error('Manager not found. Please log in again.');
+      }
 
-      toast({
-        title: 'Project Created! 🎉',
-        description: 'Homeowner account has been created with temporary credentials.',
-      });
+      // Create homeowner first
+      const { data: homeowner, error: homeownerError } = await supabase
+        .from('homeowners')
+        .insert({
+          name: data.homeowner_name,
+          email: data.homeowner_email,
+          phone: data.homeowner_phone,
+          password_hash: 'temp123', // Temporary password
+        })
+        .select()
+        .single();
+
+      if (homeownerError) throw homeownerError;
+
+      // Create project with manager_id
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          homeowner_id: homeowner.id,
+          homeowner_name: data.homeowner_name,
+          address: data.address,
+          project_type: data.project_type,
+          budget: parseFloat(data.budget),
+          start_date: data.start_date,
+          end_date: data.end_date,
+          status: 'In Progress',
+          progress: 0,
+          manager_id: manager.id,  // Assign to current manager
+          stages: [
+            { id: '1', name: 'Initial Inspection', completed: false, completedDate: null },
+            { id: '2', name: 'Material Delivery', completed: false, completedDate: null },
+            { id: '3', name: 'Tear Off', completed: false, completedDate: null },
+            { id: '4', name: 'Installation', completed: false, completedDate: null },
+            { id: '5', name: 'Final Inspection', completed: false, completedDate: null },
+          ],
+          photos: [],
+        })
+        .select()
+        .single();
+
+      if (projectError) throw projectError;
+      return project;
     },
-    onError: (error) => {
-      console.error('Error creating project:', error);
+    onSuccess: (data) => {
+      toast({
+        title: 'Success! 🎉',
+        description: `Project created for ${data.homeowner_name}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      navigate('/manager-dashboard');
+    },
+    onError: (error: any) => {
+      console.error('Create project error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create project. Please try again.',
+        description: error.message || 'Failed to create project',
         variant: 'destructive',
       });
     },
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
+    if (!formData.homeowner_name || !formData.address || !formData.project_type) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    const scopeArray = formData.scope
-      .split('\n')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-
-    createProjectMutation.mutate({
-      homeownerName: formData.homeownerName,
-      homeownerEmail: formData.homeownerEmail,
-      address: formData.address,
-      projectType: formData.projectType,
-      startDate: formData.startDate,
-      estimatedCompletion: formData.estimatedCompletion,
-      projectManager: formData.projectManager,
-      budget: parseFloat(formData.budget),
-      scope: scopeArray,
-      shingleSelection: formData.shingleSelection,
-      gutterColor: formData.gutterColor || undefined,
-      gutterSize: formData.gutterSize || undefined,
-    });
+    createProjectMutation.mutate(formData);
   };
 
-  const handleCloseDialog = () => {
-    setShowCredentials(false);
-    navigate('/manager');
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  if (managerLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!manager) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>Please log in as a manager to create projects.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/manager-login')} className="w-full">
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-full w-full bg-black">
-      <header className="flex items-center sticky top-0 z-10 gap-4 border-b border-[#96D7FE]/20 bg-black px-6 py-4 shadow-lg shadow-[#96D7FE]/5">
-        <SidebarTrigger className="text-[#96D7FE]" />
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/manager')}
-          className="text-gray-400 hover:text-white"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <h1 className="text-2xl font-semibold text-white">Create New Project</h1>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="container mx-auto py-8 px-4">
+        {/* Header */}
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/manager-dashboard')}
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <h1 className="text-3xl font-bold">Create New Project</h1>
+          <p className="text-muted-foreground mt-2">
+            Add a new roofing project for a homeowner
+          </p>
+        </div>
 
-      <main className="flex-1 overflow-auto bg-black p-6">
-        <div className="max-w-4xl mx-auto">
-          <Card className="bg-gray-900 border-[#96D7FE]/30">
-            <CardHeader>
-              <CardTitle className="text-white text-2xl">Project Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Homeowner Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-[#96D7FE]">Homeowner Information</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="homeownerName" className="text-gray-300">
-                        Homeowner Name *
-                      </Label>
-                      <Input
-                        id="homeownerName"
-                        name="homeownerName"
-                        value={formData.homeownerName}
-                        onChange={handleChange}
-                        placeholder="John & Sarah Smith"
-                        required
-                        className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="homeownerEmail" className="text-gray-300">
-                        Email Address *
-                      </Label>
-                      <Input
-                        id="homeownerEmail"
-                        name="homeownerEmail"
-                        type="email"
-                        value={formData.homeownerEmail}
-                        onChange={handleChange}
-                        placeholder="homeowner@email.com"
-                        required
-                        className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                      />
-                    </div>
+        {/* Form */}
+        <Card className="max-w-3xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Project Details
+            </CardTitle>
+            <CardDescription>
+              Fill in the information below to create a new project
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Homeowner Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Homeowner Information</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="homeowner_name">
+                      Full Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="homeowner_name"
+                      placeholder="John Doe"
+                      value={formData.homeowner_name}
+                      onChange={(e) => handleChange('homeowner_name', e.target.value)}
+                      required
+                    />
                   </div>
 
-                  <div>
-                    <Label htmlFor="address" className="text-gray-300">
-                      Property Address *
+                  <div className="space-y-2">
+                    <Label htmlFor="homeowner_email">
+                      Email <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="homeowner_email"
+                      type="email"
+                      placeholder="john@example.com"
+                      value={formData.homeowner_email}
+                      onChange={(e) => handleChange('homeowner_email', e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="homeowner_phone">
+                      Phone <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="homeowner_phone"
+                      type="tel"
+                      placeholder="+1 (555) 123-4567"
+                      value={formData.homeowner_phone}
+                      onChange={(e) => handleChange('homeowner_phone', e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="address">
+                      Property Address <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="address"
-                      name="address"
+                      placeholder="123 Main St, City, State ZIP"
                       value={formData.address}
-                      onChange={handleChange}
-                      placeholder="123 Main Street, City, State ZIP"
+                      onChange={(e) => handleChange('address', e.target.value)}
                       required
-                      className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
                     />
                   </div>
                 </div>
+              </div>
 
-                {/* Project Details */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-[#96D7FE]">Project Details</h3>
+              {/* Project Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Project Information</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="project_type">
+                      Project Type <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.project_type}
+                      onValueChange={(value) => handleChange('project_type', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select project type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Roof Replacement">Roof Replacement</SelectItem>
+                        <SelectItem value="Roof Repair">Roof Repair</SelectItem>
+                        <SelectItem value="New Construction">New Construction</SelectItem>
+                        <SelectItem value="Roof Inspection">Roof Inspection</SelectItem>
+                        <SelectItem value="Emergency Repair">Emergency Repair</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                  <div>
-                    <Label htmlFor="projectType" className="text-gray-300">
-                      Project Type *
+                  <div className="space-y-2">
+                    <Label htmlFor="budget">
+                      Budget ($) <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="projectType"
-                      name="projectType"
-                      value={formData.projectType}
-                      onChange={handleChange}
-                      placeholder="e.g., Complete Roof Replacement"
+                      id="budget"
+                      type="number"
+                      placeholder="15000"
+                      value={formData.budget}
+                      onChange={(e) => handleChange('budget', e.target.value)}
                       required
-                      className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
+                      min="0"
+                      step="0.01"
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="startDate" className="text-gray-300">
-                        Start Date *
-                      </Label>
-                      <Input
-                        id="startDate"
-                        name="startDate"
-                        type="date"
-                        value={formData.startDate}
-                        onChange={handleChange}
-                        required
-                        className="mt-1 bg-black border-[#96D7FE]/30 text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="estimatedCompletion" className="text-gray-300">
-                        Estimated Completion *
-                      </Label>
-                      <Input
-                        id="estimatedCompletion"
-                        name="estimatedCompletion"
-                        type="date"
-                        value={formData.estimatedCompletion}
-                        onChange={handleChange}
-                        required
-                        className="mt-1 bg-black border-[#96D7FE]/30 text-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="projectManager" className="text-gray-300">
-                        Project Manager *
-                      </Label>
-                      <Input
-                        id="projectManager"
-                        name="projectManager"
-                        value={formData.projectManager}
-                        onChange={handleChange}
-                        placeholder="Manager Name"
-                        required
-                        className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="budget" className="text-gray-300">
-                        Budget ($) *
-                      </Label>
-                      <Input
-                        id="budget"
-                        name="budget"
-                        type="number"
-                        value={formData.budget}
-                        onChange={handleChange}
-                        placeholder="15000"
-                        required
-                        className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="scope" className="text-gray-300">
-                      Project Scope (one item per line) *
-                    </Label>
-                    <Textarea
-                      id="scope"
-                      name="scope"
-                      value={formData.scope}
-                      onChange={handleChange}
-                      placeholder="Remove existing shingles&#10;Install new underlayment&#10;Install new shingles&#10;Clean up and inspection"
-                      rows={6}
-                      required
-                      className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Materials */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-[#96D7FE]">Materials</h3>
-
-                  <div>
-                    <Label htmlFor="shingleSelection" className="text-gray-300">
-                      Shingle Selection *
+                  <div className="space-y-2">
+                    <Label htmlFor="start_date">
+                      Start Date <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="shingleSelection"
-                      name="shingleSelection"
-                      value={formData.shingleSelection}
-                      onChange={handleChange}
-                      placeholder="e.g., GAF Timberline HDZ - Charcoal"
+                      id="start_date"
+                      type="date"
+                      value={formData.start_date}
+                      onChange={(e) => handleChange('start_date', e.target.value)}
                       required
-                      className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="gutterColor" className="text-gray-300">
-                        Gutter Color (Optional)
-                      </Label>
-                      <Input
-                        id="gutterColor"
-                        name="gutterColor"
-                        value={formData.gutterColor}
-                        onChange={handleChange}
-                        placeholder="e.g., White"
-                        className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="gutterSize" className="text-gray-300">
-                        Gutter Size (Optional)
-                      </Label>
-                      <Input
-                        id="gutterSize"
-                        name="gutterSize"
-                        value={formData.gutterSize}
-                        onChange={handleChange}
-                        placeholder="e.g., 5 inch"
-                        className="mt-1 bg-black border-[#96D7FE]/30 text-white placeholder:text-gray-500"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="end_date">Estimated End Date</Label>
+                    <Input
+                      id="end_date"
+                      type="date"
+                      value={formData.end_date}
+                      onChange={(e) => handleChange('end_date', e.target.value)}
+                    />
                   </div>
                 </div>
+              </div>
 
+              {/* Submit Button */}
+              <div className="flex gap-4 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate('/manager-dashboard')}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
                 <Button
                   type="submit"
-                  className="w-full bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold text-lg py-6"
                   disabled={createProjectMutation.isPending}
+                  className="flex-1"
                 >
                   {createProjectMutation.isPending ? (
-                    'Creating Project...'
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
                   ) : (
                     <>
-                      <Plus className="mr-2" size={20} />
+                      <Plus className="mr-2 h-4 w-4" />
                       Create Project
                     </>
                   )}
                 </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-
-      {/* Credentials Dialog */}
-      <Dialog open={showCredentials} onOpenChange={setShowCredentials}>
-        <DialogContent className="bg-gray-900 border-[#96D7FE]/30 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl text-[#96D7FE]">Project Created Successfully! 🎉</DialogTitle>
-            <DialogDescription className="text-gray-300">
-              Homeowner account has been created. Share these credentials with the homeowner:
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-black p-4 rounded-lg border border-[#96D7FE]/30">
-              <p className="text-sm text-gray-400 mb-1">Email:</p>
-              <p className="text-lg font-semibold text-white">{credentials.email}</p>
-            </div>
-            <div className="bg-black p-4 rounded-lg border border-[#96D7FE]/30">
-              <p className="text-sm text-gray-400 mb-1">Temporary Password:</p>
-              <p className="text-lg font-semibold text-[#96D7FE]">{credentials.password}</p>
-            </div>
-            <p className="text-sm text-yellow-500">
-              ⚠️ Make sure to save these credentials! The homeowner will need them to log in.
-            </p>
-          </div>
-          <Button
-            onClick={handleCloseDialog}
-            className="w-full bg-[#96D7FE] hover:bg-[#7bc5ec] text-black font-semibold"
-          >
-            Done
-          </Button>
-        </DialogContent>
-      </Dialog>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
-};
-
-export default CreateProject;
+}

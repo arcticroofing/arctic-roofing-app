@@ -9,6 +9,8 @@ export interface EmailCredentials {
   projectManager: string;
 }
 
+import { formatDateUTC } from '@/lib/utils';
+
 export async function sendHomeownerCredentials(credentials: EmailCredentials): Promise<boolean> {
   console.log('📧 Preparing to send email to:', credentials.homeownerEmail);
   console.log('✅ Email would be sent with these details:');
@@ -36,7 +38,7 @@ Password: ${credentials.temporaryPassword}
 
 Project Type: ${credentials.projectType}
 Address: ${credentials.address}
-Start Date: ${new Date(credentials.startDate).toLocaleDateString()}
+Start Date: ${formatDateUTC(credentials.startDate)}
 Project Manager: ${credentials.projectManager}
 
 WHAT YOU CAN DO IN YOUR PORTAL:

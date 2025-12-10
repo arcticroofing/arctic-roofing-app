@@ -8,6 +8,7 @@ import { getProjectById, updateProjectStages, deleteProject } from '../services/
 import { ProjectStages } from '../components/ProjectStages';
 import { PhotoLightbox } from '../components/PhotoLightbox';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateUTC } from '@/lib/utils';
 import { ArrowLeft, Trash2, Calendar, DollarSign, User, MapPin, TrendingUp, FileText, Image as ImageIcon, Bell } from 'lucide-react';
 import {
   AlertDialog,
@@ -229,7 +230,7 @@ const ProjectDetails = () => {
                   <div>
                     <p className="text-sm text-gray-400">Start Date</p>
                     <p className="font-semibold text-white">
-                      {new Date(project.startDate).toLocaleDateString()}
+                      {formatDateUTC(project.startDate)}
                     </p>
                   </div>
                 </div>
@@ -238,7 +239,7 @@ const ProjectDetails = () => {
                   <div>
                     <p className="text-sm text-gray-400">Est. Completion</p>
                     <p className="font-semibold text-white">
-                      {new Date(project.estimatedCompletion).toLocaleDateString()}
+                      {formatDateUTC(project.estimatedCompletion)}
                     </p>
                   </div>
                 </div>
@@ -347,7 +348,7 @@ const ProjectDetails = () => {
                         <div key={update.id} className="border-l-2 border-[#96D7FE] pl-4">
                           <div className="flex flex-wrap items-center gap-2 mb-2 text-sm">
                             <span className="text-gray-400">
-                              {new Date(update.date).toLocaleDateString()}
+                              {formatDateUTC(update.date)}
                             </span>
                             <span className="text-gray-500">•</span>
                             <span className="text-gray-400">{update.author}</span>

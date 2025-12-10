@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Briefcase } from 'lucide-react';
+import { useManager } from '../contexts/ManagerContext';
+import { supabase } from '../lib/supabase';
 
 const ManagerLogin = () => {
   const navigate = useNavigate();
-  const { loginManager } = useAuth();
   const { toast } = useToast();
+  const { setManager } = useManager();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,25 +22,49 @@ const ManagerLogin = () => {
 
     console.log('🔐 Manager login attempt:', email);
 
-    const success = await loginManager(email, password);
+    try {
+      const { data, error } = await supabase
+        .from('managers')
+        .select('*')
+        .eq('email', email.toLowerCase().trim())
+        .eq('password_hash', password)
+        .single();
 
-    if (success) {
-      console.log('✅ Manager login successful');
+      if (error || !data) {
+        console.log('❌ Manager login failed');
+        toast({
+          title: 'Login Failed',
+          description: 'Invalid email or password. Please try again.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('✅ Manager login successful:', data);
+
+      // Save to localStorage
+      localStorage.setItem('managerSession', JSON.stringify(data));
+      
+      // Save to context
+      setManager(data);
+
       toast({
         title: 'Welcome back!',
         description: 'Successfully logged in as manager.',
       });
-      navigate('/manager');
-    } else {
-      console.log('❌ Manager login failed');
+
+      navigate('/manager/dashboard');
+    } catch (err) {
+      console.error('Login error:', err);
       toast({
-        title: 'Login Failed',
-        description: 'Invalid email or password. Please try again.',
+        title: 'Error',
+        description: 'Something went wrong. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
